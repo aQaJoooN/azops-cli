@@ -1,0 +1,1615 @@
+general: # for azops functionality
+  teamprojectname: testTeamProject
+  groupsalias: # set an alias code fore each group to use in config file
+    Dev:
+      SuperAdmins: "11"
+      Admins: "12"
+      Members: "13"
+      Readers: "14"
+      PR Approvers: "15"
+    DevOps:
+      Admins: "22"
+      Members: "23"
+    SRE:
+      Admins: "32"
+      Members: "33"
+    DB:
+      Admins: "42"
+      Members: "43"
+  groupnametemplate: "teamprojectname team role"
+
+projectsettings: # refer to Team Project Settings
+  overview: # refer to Overview in General in Team Project Settings 
+    # shows each item is enable or disable
+    boards: "disable"
+    repos: "enable"
+    pipelines: "enable"
+    testplans: "disable"
+    artifacts: "disable"
+  security: # refer to security in General in Team Project Settings
+    creategroup: true # shows that groups want to be created or not
+    permissions: # shows the permissions for wach groups
+      Bypass_rules_on_work_item_updates:
+        Not_Set:
+          - "all"
+      Change_process_of_team_project:
+        Not_Set:
+          - "all"
+      Create_tag_definition:
+        Not_Set:
+          - "all"
+      Create_test_runs:
+        Not_Set:
+          - "all"
+      Delete_and_restore_work_items:
+        Deny:
+          - "all"
+      Delete_shared_Analytics_views:
+        Deny:
+          - "all"
+      Delete_test_runs:
+        Deny:
+          - "all"
+      Delete_this_node:
+        Deny:
+          - "all"
+      Edit_shared_Analytics_views:
+        Not_Set:
+          - "all"
+      Edit_this_node:
+        Not_Set:
+          - "all"
+      Manage_project_properties:
+        Not_Set:
+          - "all"
+      Manage_test_configurations:
+        Not_Set:
+          - "all"
+      Manage_test_environments:
+        Not_Set:
+          - "all"
+      Permanently_delete_work_items:
+        Deny:
+          - "all"
+      Rename_team_project:
+        Deny:
+          - "all"
+      Suppress_notifications_for_work_item_updates:
+        Not_Set:
+          - "all"
+      View_analytics:
+        Allow:
+          - "all"
+      View_permissions_for_this_node:
+        Allow:
+          - "all"
+      View_test_runs:
+        Allow:
+          - "all"
+  servicehook: # refer to Service Hooks in General in Team Project Settings
+    create:
+      - "new webhook 1"
+      - "new webhook 2"
+      - "new webhook 3"
+  dashboards: # refer to Dashboards in General in Team Project Settings
+    Security:
+      Create_dashboards: false
+      Edit_dashboards: false
+      Delete_dashboards: false
+  repositories: # refer to Repositories in Repo in Team Project Settings
+    policies: # set policies for all repositories
+      Maximum_file_size: "10 MB"
+    permissions:
+      Bypass_policies_when_completing_pull_requests:
+        Allow:
+          - "11"
+          - "12"
+          - "22"
+        Not_Set:
+          - "13"
+          - "14"
+          - "15"
+          - "23"
+          - "32"
+          - "33"
+          - "42"
+          - "43"
+      Bypass_policies_when_pushing:
+        Allow:
+          - "11"
+          - "12"
+          - "22"
+        Not_Set:
+          - "13"
+          - "14"
+          - "15"
+          - "23"
+          - "32"
+          - "33"
+          - "42"
+          - "43"
+      Contribute:
+        Allow:
+          - "11"
+          - "12"
+          - "13"
+          - "15"
+          - "22"
+          - "23"
+          - "32"
+          - "33"
+        Not_Set:
+          - "14"
+          - "42"
+          - "43"
+      Contribute_to_pull_requests:
+        Allow:
+          - "11"
+          - "12"
+          - "13"
+          - "15"
+          - "22"
+          - "23"
+          - "32"
+          - "33"
+          - "42"
+        Not_Set:
+          - "14"
+          - "43"
+      Create_branch:
+        Allow:
+          - "11"
+          - "12"
+          - "13"
+          - "15"
+          - "22"
+          - "23"
+          - "32"
+          - "33"
+          - "42"
+        Not_Set:
+          - "14"
+          - "43"
+      Create_repository:
+        Allow:
+          - "11"
+          - "12"
+          - "22"
+          - "23"
+          - "32"
+        Not_Set:
+          - "13"
+          - "14"
+          - "15"
+          - "33"
+          - "42"
+          - "43"
+      Create_tag:
+        Allow:
+          - "11"
+          - "12"
+          - "22"
+          - "23"
+          - "32"
+        Not_Set:
+          - "13"
+          - "14"
+          - "15"
+          - "33"
+          - "42"
+          - "43"
+      Delete_or_disable_repository:
+        Deny:
+          - "all"
+      Edit_policies:
+        Allow:
+          - "11"
+          - "12"
+          - "22"
+          - "23"
+        Not_Set:
+          - "13"
+          - "14"
+          - "15"
+          - "32"
+          - "33"
+          - "42"
+          - "43"
+      Force_push:
+        Allow:
+          - "11"
+          - "12"
+          - "15"
+          - "22"
+        Not_Set:
+          - "13"
+          - "14"
+          - "23"
+          - "32"
+          - "33"
+          - "42"
+          - "43"
+      Manage_notes:
+        Allow:
+          - "11"
+          - "12"
+          - "22"
+          - "23"
+        Not_Set:
+          - "13"
+          - "14"
+          - "15"
+          - "32"
+          - "33"
+          - "42"
+          - "43"
+      Manage_permissions:
+        Allow:
+          - "11"
+        Not_Set:
+          - "12"
+          - "15"
+          - "22"
+          - "23"
+          - "32"
+          - "33"
+          - "42"
+        Deny:
+          - "13"
+          - "14"
+          - "43"
+      Read:
+        Allow:
+          - "all"
+      Remove_others_locks:
+        Allow:
+          - "11"
+          - "12"
+          - "22"
+          - "23"
+          - "32"
+        Not_Set:
+          - "13"
+          - "14"
+          - "15"
+          - "33"
+          - "42"
+          - "43"
+      Rename_repository:
+        Deny:
+          - "all"
+  agentpools: # refer to Agent Pools in Pipelines in Team Project Settings
+    permissions:
+      - agentPoolName: "Default"
+        permission:
+          User:
+            - "all"
+      - agentPoolName: "win25"
+        permission:
+          User:
+            - "all"
+      - agentPoolName: "cicd-permission"
+        permission:
+          Reader:
+            - "11"
+            - "12"
+            - "22"
+            - "32"
+            - "42"
+  settings: # refer to Settings in Pipelines in Team Project Settings
+    Retention_policy:
+      Days_to_keep_artifacts_symbols_and_attachments: 20
+      Days_to_keep_runs: 731
+      Days_to_keep_pull_request_runs: 20
+      Number_of_recent_runs_to_retain_per_pipeline: 5
+    General:
+      Disable_anonymous_access_to_badges: "on"
+      Limit_variables_that_can_be_set_at_queue_time: "on"
+      Limit_job_authorization_scope_to_current_project_for_non-release_pipelines: "off"
+      Limit_job_authorization_scope_to_current_project_for_release_pipelines: "on"
+      Publish_metadata_from_pipelines: "off"
+      Protect_access_to_repositories_in_YAML_pipelines: "on"
+      Disable_creation_of_classic_build_pipelines: "off"
+      Disable_creation_of_classic_release_pipelines: "off"
+      Enable_shell_tasks_arguments_validation: "off"
+    Triggers:
+      Disable_implied_YAML_CI_trigger: "off"
+  release: # refer to Release Retention in Pipelines in Team Project Settings
+    Maximum_retention_policy:
+      Days_to_retain_a_release: 20
+      Minimum_releases_to_keep: 3
+    Default_retention_policy:
+      Days_to_retain_a_release: 20
+      Minimum_releases_to_keep: 3
+      Retain_build: true
+    Permanently_destroy_releases:
+      Days_to_keep_releases_after_deletion: 731
+  serviceconnections: # refer to Service Connections in Pipelines in Team Project Settings
+    create: # shows what service connections should be created by secret
+      - "Docker Repository"
+      - "Docker Repository Pull"
+      - "Nuget Repository"
+      - "Nuget Repository Pull"
+      - "NPM Repository"
+      - "NPM Repository Pull"
+      - "SonarQubeConnection"
+      - "DefectDojo"
+      - "DpTrack"
+    permissions: # shows which group alias have what role
+      Creator:
+        - "11"
+        - "12"
+        - "22"
+        - "23"
+        - "32"
+        - "42"
+      User:
+        - "13"
+        - "15"
+        - "33"
+        - "43"
+      Reader:
+        - "14"
+  test: # refer to Test Retention in Test in Team Project Settings
+    Retention:
+      Days_to_keep_automated_test_runs_results_and_attachments_when_not_associated_with_pipeline: 20
+      Days_to_keep_manual_test_runs_results_and_attachments: 20
+pipelines: # refer to Pipelines
+  pipelines: # refer to Pipelines in Pipelines
+    permissions:
+      - path: "root" # permission for / path in pipelines
+        permission:
+          Administer_build_permissions:
+            Allow:
+              - "11"
+            Not_Set:
+              - "12"
+              - "13"
+              - "14"
+              - "15"
+              - "22"
+              - "23"
+              - "32"
+              - "33"
+              - "42"
+              - "43"
+          Delete_build_pipeline:
+            Allow:
+              - "22"
+            Deny:
+              - "11"
+              - "12"
+              - "13"
+              - "14"
+              - "15"
+              - "23"
+              - "32"
+              - "33"
+              - "42"
+              - "43"
+          Delete_builds:
+            Allow:
+              - "11"
+              - "22"
+              - "32"
+            Not_Set:
+              - "12"
+              - "15"
+            Deny:
+              - "13"
+              - "14"
+              - "23"
+              - "33"
+              - "42"
+              - "43"
+          Destroy_builds:
+            Deny:
+              - "all"
+          Edit_build_pipeline:
+            Allow:
+              - "11"
+              - "12"
+              - "22"
+              - "23"
+              - "32"
+            Not_Set:
+              - "13"
+              - "14"
+              - "15"
+              - "33"
+              - "42"
+              - "43"
+          Edit_build_quality:
+            Allow:
+              - "11"
+              - "12"
+              - "22"
+              - "23"
+              - "32"
+            Not_Set:
+              - "13"
+              - "14"
+              - "15"
+              - "33"
+              - "42"
+              - "43"
+          Manage_build_qualities:
+            Allow:
+              - "11"
+              - "12"
+              - "22"
+              - "23"
+              - "32"
+            Not_Set:
+              - "13"
+              - "14"
+              - "15"
+              - "33"
+              - "42"
+              - "43"
+          Manage_build_queue:
+            Allow:
+              - "11"
+              - "22"
+              - "23"
+              - "32"
+            Not_Set:
+              - "12"
+              - "13"
+              - "14"
+              - "15"
+              - "33"
+              - "42"
+              - "43"
+          Override_check-in_validation_by_build:
+            Allow:
+              - "11"
+              - "22"
+              - "23"
+              - "32"
+            Not_Set:
+              - "12"
+              - "13"
+              - "14"
+              - "15"
+              - "33"
+              - "42"
+              - "43"
+          Queue_builds:
+            Allow:
+              - "11"
+              - "12"
+              - "22"
+              - "23"
+              - "32"
+              - "33"
+            Not_Set:
+              - "13"
+              - "14"
+              - "15"
+              - "42"
+              - "43"
+          Retain_indefinitely:
+            Allow:
+              - "11"
+              - "22"
+              - "23"
+            Not_Set:
+              - "12"
+              - "13"
+              - "14"
+              - "15"
+              - "32"
+              - "33"
+              - "42"
+              - "43"
+          Stop_builds:
+            Allow:
+              - "11"
+              - "22"
+              - "23"
+              - "32"
+            Not_Set:
+              - "12"
+              - "13"
+              - "14"
+              - "15"
+              - "33"
+              - "42"
+              - "43"
+          Update_build_information:
+            Allow:
+              - "11"
+              - "22"
+              - "23"
+              - "32"
+            Not_Set:
+              - "12"
+              - "13"
+              - "14"
+              - "15"
+              - "33"
+              - "42"
+              - "43"
+          View_build_pipeline:
+            Allow:
+              - "11"
+              - "12"
+              - "13"
+              - "15"
+              - "22"
+              - "23"
+              - "32"
+              - "33"
+              - "42"
+            Not_Set:
+              - "14"
+              - "43"
+          View_builds:
+            Allow:
+              - "11"
+              - "12"
+              - "13"
+              - "15"
+              - "22"
+              - "23"
+              - "32"
+              - "33"
+              - "42"
+            Not_Set:
+              - "14"
+              - "43"
+      - path: "Dev" # permission for /Dev path in pipelines
+        permission:
+          Administer_build_permissions:
+            Not_Set:
+              - "all"
+          Delete_build_pipeline:
+            Not_Set:
+              - "all"
+          Delete_builds:
+            Not_Set:
+              - "all"
+          Destroy_builds:
+            Not_Set:
+              - "all"
+          Edit_build_pipeline:
+            Allow:
+              - "13"
+              - "15"
+            Not_Set:
+              - "11"
+              - "12"
+              - "14"
+              - "22"
+              - "23"
+              - "32"
+              - "33"
+              - "42"
+              - "43"
+          Edit_build_quality:
+            Allow:
+              - "13"
+              - "15"
+            Not_Set:
+              - "11"
+              - "12"
+              - "14"
+              - "22"
+              - "23"
+              - "32"
+              - "33"
+              - "42"
+              - "43"
+          Manage_build_qualities:
+            Allow:
+              - "13"
+              - "15"
+            Not_Set:
+              - "11"
+              - "12"
+              - "14"
+              - "22"
+              - "23"
+              - "32"
+              - "33"
+              - "42"
+              - "43"
+          Manage_build_queue:
+            Not_Set:
+              - "all"
+          Override_check-in_validation_by_build:
+            Not_Set:
+              - "all"
+          Queue_builds:
+            Allow:
+              - "13"
+              - "15"
+            Not_Set:
+              - "11"
+              - "12"
+              - "14"
+              - "22"
+              - "23"
+              - "32"
+              - "33"
+              - "42"
+              - "43"
+          Retain_indefinitely:
+            Allow:
+              - "12"
+            Not_Set:
+              - "11"
+              - "13"
+              - "14"
+              - "15"
+              - "22"
+              - "23"
+              - "32"
+              - "33"
+              - "42"
+              - "43"
+          Stop_builds:
+            Allow:
+              - "12"
+              - "13"
+              - "15"
+            Not_Set:
+              - "11"
+              - "14"
+              - "22"
+              - "23"
+              - "32"
+              - "33"
+              - "42"
+              - "43"
+          Update_build_information:
+            Allow:
+              - "12"
+              - "13"
+              - "15"
+            Not_Set:
+              - "11"
+              - "14"
+              - "22"
+              - "23"
+              - "32"
+              - "33"
+              - "42"
+              - "43"
+          View_build_pipeline:
+            Allow:
+              - "14"
+            Not_Set:
+              - "11"
+              - "12"
+              - "13"
+              - "15"
+              - "22"
+              - "23"
+              - "32"
+              - "33"
+              - "42"
+              - "43"
+          View_builds:
+            Allow:
+              - "14"
+            Not_Set:
+              - "11"
+              - "12"
+              - "13"
+              - "15"
+              - "22"
+              - "23"
+              - "32"
+              - "33"
+              - "42"
+              - "43"
+      - path: "SRE" # permission for /SRE path in pipelines
+        permission:
+          Administer_build_permissions:
+            Not_Set:
+              - "all"
+          Delete_build_pipeline:
+            Not_Set:
+              - "all"
+          Delete_builds:
+            Not_Set:
+              - "all"
+          Destroy_builds:
+            Not_Set:
+              - "all"
+          Edit_build_pipeline:
+            Allow:
+              - "33"
+            Not_Set:
+              - "11"
+              - "12"
+              - "13"
+              - "14"
+              - "15"
+              - "22"
+              - "23"
+              - "32"
+              - "42"
+              - "43"
+          Edit_build_quality:
+            Allow:
+              - "33"
+            Not_Set:
+              - "11"
+              - "12"
+              - "13"
+              - "14"
+              - "15"
+              - "22"
+              - "23"
+              - "32"
+              - "42"
+              - "43"
+          Manage_build_qualities:
+            Allow:
+              - "33"
+            Not_Set:
+              - "11"
+              - "12"
+              - "13"
+              - "14"
+              - "15"
+              - "22"
+              - "23"
+              - "32"
+              - "42"
+              - "43"
+          Manage_build_queue:
+            Not_Set:
+              - "all"
+          Override_check-in_validation_by_build:
+            Not_Set:
+              - "all"
+          Queue_builds:
+            Not_Set:
+              - "all"
+          Retain_indefinitely:
+            Not_Set:
+              - "all"
+          Stop_builds:
+            Allow:
+              - "33"
+            Not_Set:
+              - "11"
+              - "12"
+              - "13"
+              - "14"
+              - "15"
+              - "22"
+              - "23"
+              - "32"
+              - "42"
+              - "43"
+          Update_build_information:
+            Allow:
+              - "33"
+            Not_Set:
+              - "11"
+              - "12"
+              - "13"
+              - "14"
+              - "15"
+              - "22"
+              - "23"
+              - "32"
+              - "42"
+              - "43"
+          View_build_pipeline:
+            Not_Set:
+              - "all"
+          View_builds:
+            Not_Set:
+              - "all"
+      - path: "DB" # permission for /DB path in pipelines
+        permission:
+          Administer_build_permissions:
+            Not_Set:
+              - "all"
+          Delete_build_pipeline:
+            Not_Set:
+              - "all"
+          Delete_builds:
+            Not_Set:
+              - "all"
+          Destroy_builds:
+            Not_Set:
+              - "all"
+          Edit_build_pipeline:
+            Allow:
+              - "42"
+            Not_Set:
+              - "11"
+              - "12"
+              - "13"
+              - "14"
+              - "15"
+              - "22"
+              - "23"
+              - "32"
+              - "33"
+              - "43"
+          Edit_build_quality:
+            Allow:
+              - "42"
+            Not_Set:
+              - "11"
+              - "12"
+              - "13"
+              - "14"
+              - "15"
+              - "22"
+              - "23"
+              - "32"
+              - "33"
+              - "43"
+          Manage_build_qualities:
+            Allow:
+              - "42"
+            Not_Set:
+              - "11"
+              - "12"
+              - "13"
+              - "14"
+              - "15"
+              - "22"
+              - "23"
+              - "32"
+              - "33"
+              - "43"
+          Manage_build_queue:
+            Not_Set:
+              - "all"
+          Override_check-in_validation_by_build:
+            Not_Set:
+              - "all"
+          Queue_builds:
+            Allow:
+              - "42"
+              - "43"
+            Not_Set:
+              - "11"
+              - "12"
+              - "13"
+              - "14"
+              - "15"
+              - "22"
+              - "23"
+              - "32"
+              - "33"
+          Retain_indefinitely:
+            Allow:
+              - "42"
+            Not_Set:
+              - "11"
+              - "12"
+              - "13"
+              - "14"
+              - "15"
+              - "22"
+              - "23"
+              - "32"
+              - "33"
+              - "43"
+          Stop_builds:
+            Allow:
+              - "42"
+              - "43"
+            Not_Set:
+              - "11"
+              - "12"
+              - "13"
+              - "14"
+              - "15"
+              - "22"
+              - "23"
+              - "32"
+              - "33"
+          Update_build_information:
+            Allow:
+              - "42"
+            Not_Set:
+              - "11"
+              - "12"
+              - "13"
+              - "14"
+              - "15"
+              - "22"
+              - "23"
+              - "32"
+              - "33"
+              - "43"
+          View_build_pipeline:
+            Allow:
+              - "43"
+            Not_Set:
+              - "11"
+              - "12"
+              - "13"
+              - "14"
+              - "15"
+              - "22"
+              - "23"
+              - "32"
+              - "33"
+              - "42"
+          View_builds:
+            Allow:
+              - "43"
+            Not_Set:
+              - "11"
+              - "12"
+              - "13"
+              - "14"
+              - "15"
+              - "22"
+              - "23"
+              - "32"
+              - "33"
+              - "42"
+  environments: # refer to Environments in Pipelines
+    permissions: # shows which group alias have what role
+      Administrator:
+        - "11"
+        - "22"
+        - "32"
+      Creator:
+        - "23"
+        - "33"
+      User:
+        - "12"
+      Reader:
+        - "13"
+        - "14"
+        - "15"
+        - "42"
+        - "43"
+  library: # refer to library in Pipelines
+    create:  # shows what variable group should be created by secret
+      - "nexusRepository"
+      - "Database Build Server"
+      - "WebServer"
+    permissions: # shows which group alias have what role
+      Administrator:
+        - "11"
+        - "22"
+        - "32"
+      Creator:
+        - "23"
+        - "33"
+        - "42"
+      User:
+        - "12"
+      Reader:
+        - "13"
+        - "14"
+        - "15"
+        - "43"
+  releases: # refer to Releases in Pipelines
+    permissions:
+      - path: "root" # permission for / path in Releases
+        permission:
+          Administer_release_permissions:
+            Allow:
+              - "11"
+            Not_Set:
+              - "12"
+              - "13"
+              - "14"
+              - "15"
+              - "22"
+              - "23"
+              - "32"
+              - "33"
+              - "42"
+              - "43"
+          Create_releases:
+            Allow:
+              - "11"
+              - "22"
+              - "23"
+              - "32"
+              - "33"
+            Not_Set:
+              - "12"
+              - "13"
+              - "14"
+              - "15"
+              - "42"
+              - "43"
+          Delete_release_pipeline:
+            Allow:
+              - "22"
+              - "32"
+            Deny:
+              - "11"
+              - "12"
+              - "13"
+              - "14"
+              - "15"
+              - "23"
+              - "33"
+              - "42"
+              - "43"
+          Delete_release_stage:
+            Allow:
+              - "11"
+              - "22"
+              - "23"
+              - "32"
+            Not_Set:
+              - "12"
+              - "13"
+              - "14"
+              - "15"
+              - "33"
+              - "42"
+              - "43"
+          Delete_releases:
+            Allow:
+              - "11"
+              - "22"
+              - "32"
+            Not_Set:
+              - "12"
+              - "13"
+              - "14"
+              - "15"
+              - "23"
+              - "33"
+              - "42"
+              - "43"
+          Edit_release_pipeline:
+            Allow:
+              - "11"
+              - "22"
+              - "23"
+              - "32"
+            Not_Set:
+              - "12"
+              - "13"
+              - "14"
+              - "15"
+              - "33"
+              - "42"
+              - "43"
+          Edit_release_stage:
+            Allow:
+              - "11"
+              - "22"
+              - "23"
+              - "32"
+            Not_Set:
+              - "12"
+              - "13"
+              - "14"
+              - "15"
+              - "33"
+              - "42"
+              - "43"
+          Manage_deployments:
+            Allow:
+              - "11"
+              - "22"
+              - "23"
+              - "32"
+            Not_Set:
+              - "12"
+              - "13"
+              - "14"
+              - "15"
+              - "33"
+              - "42"
+              - "43"
+          Manage_release_approvers:
+            Allow:
+              - "11"
+              - "22"
+              - "23"
+              - "32"
+            Not_Set:
+              - "12"
+              - "13"
+              - "14"
+              - "15"
+              - "33"
+              - "42"
+              - "43"
+          Manage_releases:
+            Allow:
+              - "11"
+              - "22"
+              - "23"
+              - "32"
+            Not_Set:
+              - "12"
+              - "13"
+              - "14"
+              - "15"
+              - "33"
+              - "42"
+              - "43"
+          View_release_pipeline:
+            Allow:
+              - "11"
+              - "12"
+              - "13"
+              - "15"
+              - "22"
+              - "23"
+              - "32"
+              - "33"
+              - "42"
+            Not_Set:
+              - "14"
+              - "43"
+          View_releases:
+            Allow:
+              - "11"
+              - "12"
+              - "13"
+              - "15"
+              - "22"
+              - "23"
+              - "32"
+              - "33"
+              - "42"
+            Not_Set:
+              - "14"
+              - "43"
+      - path: "Dev" # permission for /Dev path in Releases
+        permission:
+          Administer_release_permissions:
+            Not_Set:
+              - "all"
+          Create_releases:
+            Allow:
+              - "12"
+              - "13"
+              - "15"
+            Not_Set:
+              - "11"
+              - "14"
+              - "22"
+              - "23"
+              - "32"
+              - "33"
+              - "42"
+              - "43"
+          Delete_release_pipeline:
+            Not_Set:
+              - "all"
+          Delete_release_stage:
+            Allow:
+              - "12"
+              - "13"
+              - "15"
+            Not_Set:
+              - "11"
+              - "14"
+              - "22"
+              - "23"
+              - "32"
+              - "33"
+              - "42"
+              - "43"
+          Delete_releases:
+            Allow:
+              - "12"
+              - "23"
+            Not_Set:
+              - "11"
+              - "13"
+              - "14"
+              - "15"
+              - "22"
+              - "32"
+              - "33"
+              - "42"
+              - "43"
+          Edit_release_pipeline:
+            Allow:
+              - "12"
+              - "13"
+              - "15"
+            Not_Set:
+              - "11"
+              - "14"
+              - "22"
+              - "23"
+              - "32"
+              - "33"
+              - "42"
+              - "43"
+          Edit_release_stage:
+            Allow:
+              - "12"
+              - "13"
+              - "15"
+            Not_Set:
+              - "11"
+              - "14"
+              - "22"
+              - "23"
+              - "32"
+              - "33"
+              - "42"
+              - "43"
+          Manage_deployments:
+            Allow:
+              - "12"
+              - "13"
+              - "15"
+            Not_Set:
+              - "11"
+              - "14"
+              - "22"
+              - "23"
+              - "32"
+              - "33"
+              - "42"
+              - "43"
+          Manage_release_approvers:
+            Allow:
+              - "12"
+            Not_Set:
+              - "11"
+              - "13"
+              - "14"
+              - "15"
+              - "22"
+              - "23"
+              - "32"
+              - "33"
+              - "42"
+              - "43"
+          Manage_releases:
+            Allow:
+              - "12"
+              - "13"
+              - "15"
+            Not_Set:
+              - "11"
+              - "14"
+              - "22"
+              - "23"
+              - "32"
+              - "33"
+              - "42"
+              - "43"
+          View_release_pipeline:
+            Allow:
+              - "14"
+            Not_Set:
+              - "11"
+              - "12"
+              - "13"
+              - "15"
+              - "22"
+              - "23"
+              - "32"
+              - "33"
+              - "42"
+              - "43"
+          View_releases:
+            Allow:
+              - "14"
+            Not_Set:
+              - "11"
+              - "12"
+              - "13"
+              - "15"
+              - "22"
+              - "23"
+              - "32"
+              - "33"
+              - "42"
+              - "43"
+      - path: "SRE" # permission for /SRE path in Releases
+        permission:
+          Administer_release_permissions:
+            Not_Set:
+              - "all"
+          Create_releases:
+            Not_Set:
+              - "all"
+          Delete_release_pipeline:
+            Not_Set:
+              - "all"
+          Delete_release_stage:
+            Allow:
+              - "33"
+            Not_Set:
+              - "11"
+              - "12"
+              - "13"
+              - "14"
+              - "15"
+              - "22"
+              - "23"
+              - "32"
+              - "42"
+              - "43"
+          Delete_releases:
+            Allow:
+              - "33"
+            Not_Set:
+              - "11"
+              - "12"
+              - "13"
+              - "14"
+              - "15"
+              - "22"
+              - "23"
+              - "32"
+              - "42"
+              - "43"
+          Edit_release_pipeline:
+            Allow:
+              - "33"
+            Not_Set:
+              - "11"
+              - "12"
+              - "13"
+              - "14"
+              - "15"
+              - "22"
+              - "23"
+              - "32"
+              - "42"
+              - "43"
+          Edit_release_stage:
+            Allow:
+              - "33"
+            Not_Set:
+              - "11"
+              - "12"
+              - "13"
+              - "14"
+              - "15"
+              - "22"
+              - "23"
+              - "32"
+              - "42"
+              - "43"
+          Manage_deployments:
+            Allow:
+              - "33"
+            Not_Set:
+              - "11"
+              - "12"
+              - "13"
+              - "14"
+              - "15"
+              - "22"
+              - "23"
+              - "32"
+              - "42"
+              - "43"
+          Manage_release_approvers:
+            Allow:
+              - "33"
+            Not_Set:
+              - "11"
+              - "12"
+              - "13"
+              - "14"
+              - "15"
+              - "22"
+              - "23"
+              - "32"
+              - "42"
+              - "43"
+          Manage_releases:
+            Allow:
+              - "33"
+            Not_Set:
+              - "11"
+              - "12"
+              - "13"
+              - "14"
+              - "15"
+              - "22"
+              - "23"
+              - "32"
+              - "42"
+              - "43"
+          View_release_pipeline:
+            Not_Set:
+              - "all"
+          View_releases:
+            Not_Set:
+              - "all"
+      - path: "DB" # permission for /DB path in Releases
+        permission:
+          Administer_release_permissions:
+            Not_Set:
+              - "all"
+          Create_releases:
+            Allow:
+              - "42"
+              - "43"
+            Not_Set:
+              - "11"
+              - "12"
+              - "13"
+              - "14"
+              - "15"
+              - "22"
+              - "23"
+              - "32"
+              - "33"
+          Delete_release_pipeline:
+            Not_Set:
+              - "all"
+          Delete_release_stage:
+            Allow:
+              - "42"
+            Not_Set:
+              - "11"
+              - "12"
+              - "13"
+              - "14"
+              - "15"
+              - "22"
+              - "23"
+              - "32"
+              - "33"
+              - "43"
+          Delete_releases:
+            Not_Set:
+              - "all"
+          Edit_release_pipeline:
+            Allow:
+              - "42"
+            Not_Set:
+              - "11"
+              - "12"
+              - "13"
+              - "14"
+              - "15"
+              - "22"
+              - "23"
+              - "32"
+              - "33"
+              - "43"
+          Edit_release_stage:
+            Allow:
+              - "42"
+            Not_Set:
+              - "11"
+              - "12"
+              - "13"
+              - "14"
+              - "15"
+              - "22"
+              - "23"
+              - "32"
+              - "33"
+              - "43"
+          Manage_deployments:
+            Allow:
+              - "42"
+            Not_Set:
+              - "11"
+              - "12"
+              - "13"
+              - "14"
+              - "15"
+              - "22"
+              - "23"
+              - "32"
+              - "33"
+              - "43"
+          Manage_release_approvers:
+            Allow:
+              - "42"
+            Not_Set:
+              - "11"
+              - "12"
+              - "13"
+              - "14"
+              - "15"
+              - "22"
+              - "23"
+              - "32"
+              - "33"
+              - "43"
+          Manage_releases:
+            Allow:
+              - "42"
+            Not_Set:
+              - "11"
+              - "12"
+              - "13"
+              - "14"
+              - "15"
+              - "22"
+              - "23"
+              - "32"
+              - "33"
+              - "43"
+          View_release_pipeline:
+            Allow:
+              - "43"
+            Not_Set:
+              - "11"
+              - "12"
+              - "13"
+              - "14"
+              - "15"
+              - "22"
+              - "23"
+              - "32"
+              - "33"
+              - "42"
+          View_releases:
+            Allow:
+              - "43"
+            Not_Set:
+              - "11"
+              - "12"
+              - "13"
+              - "14"
+              - "15"
+              - "22"
+              - "23"
+              - "32"
+              - "33"
+              - "42"
+  taskgroups: # refer to Task groups in Pipelines
+    permissions: # shows which group alias have what permissions
+      Administer_task_group_permissions:
+        Allow:
+          - "11"
+          - "22"
+          - "32"
+        Not_Set:
+          - "12"
+          - "13"
+          - "14"
+          - "15"
+          - "23"
+          - "33"
+          - "42"
+          - "43"
+      Delete_task_group:
+        Not_Set:
+          - "all"
+      Edit_task_group:
+        Allow:
+          - "11"
+          - "12"
+          - "22"
+          - "23"
+          - "32"
+          - "33"
+          - "42"
+        Not_Set:
+          - "13"
+          - "14"
+          - "15"
+          - "43"
+  deploymentgroup: # refer to Deployment group in Pipelines
+    permissions: # shows which group alias have what role
+      Administrator:
+        - "11"
+        - "22"
+        - "32"
+      Creator:
+        - "12"
+        - "23"
+        - "33"
+      User:
+        - "13"
+        - "15"
+        - "42"
+      Reader:
+        - "14"
+        - "43"
