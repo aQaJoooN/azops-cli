@@ -2,7 +2,9 @@ package config
 
 import (
 	"fmt"
+	"net/url"
 	"path"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -198,6 +200,10 @@ func (v *validator) validateConfiguration() {
 		v.validateEnableDisable("projectsettings.overview.artifacts", c.Artifacts)
 	}
 	if c := cfg.ProjectSettings.Settings; c != nil {
+		v.positive("projectsettings.settings.Retention_policy.Days_to_keep_artifacts_symbols_and_attachments", c.RetentionPolicy.ArtifactDays)
+		v.positive("projectsettings.settings.Retention_policy.Days_to_keep_runs", c.RetentionPolicy.RunDays)
+		v.positive("projectsettings.settings.Retention_policy.Days_to_keep_pull_request_runs", c.RetentionPolicy.PullRequestDays)
+		v.positive("projectsettings.settings.Retention_policy.Number_of_recent_runs_to_retain_per_pipeline", c.RetentionPolicy.RecentRunCount)
 		settings := map[string]OnOff{
 			"Disable_anonymous_access_to_badges":                                         c.General.DisableAnonymousBadges,
 			"Limit_variables_that_can_be_set_at_queue_time":                              c.General.LimitQueueTimeVariables,
@@ -218,7 +224,21 @@ func (v *validator) validateConfiguration() {
 		v.validateAccess("projectsettings.security.permissions", c.Permissions)
 	}
 	if c := cfg.ProjectSettings.Repositories; c != nil {
+		if !maximumFileSizePattern.MatchString(strings.TrimSpace(c.Policies.MaximumFileSize)) {
+			v.addConfig("projectsettings.repositories.policies.Maximum_file_size", "expected a positive size such as 10 MB")
+		}
 		v.validateAccess("projectsettings.repositories.permissions", c.Permissions)
+	}
+	if c := cfg.ProjectSettings.Release; c != nil {
+		v.positive("projectsettings.release.Maximum_retention_policy.Days_to_retain_a_release", c.MaximumRetention.DaysToRetain)
+		v.positive("projectsettings.release.Maximum_retention_policy.Minimum_releases_to_keep", c.MaximumRetention.MinimumKeep)
+		v.positive("projectsettings.release.Default_retention_policy.Days_to_retain_a_release", c.DefaultRetention.DaysToRetain)
+		v.positive("projectsettings.release.Default_retention_policy.Minimum_releases_to_keep", c.DefaultRetention.MinimumKeep)
+		v.positive("projectsettings.release.Permanently_destroy_releases.Days_to_keep_releases_after_deletion", c.DestroyReleases.DaysAfterDeletion)
+	}
+	if c := cfg.ProjectSettings.Test; c != nil {
+		v.positive("projectsettings.test.Retention.Days_to_keep_automated_test_runs_results_and_attachments_when_not_associated_with_pipeline", c.Retention.AutomatedRunDays)
+		v.positive("projectsettings.test.Retention.Days_to_keep_manual_test_runs_results_and_attachments", c.Retention.ManualRunDays)
 	}
 	if c := cfg.ProjectSettings.AgentPools; c != nil {
 		seen := map[string]struct{}{}
@@ -261,6 +281,29 @@ func (v *validator) validateNames(field string, names []string) {
 	for i, name := range names {
 		v.validateUniqueName(fmt.Sprintf("%s[%d]", field, i), name, seen)
 	}
+}
+
+var maximumFileSizePattern = regexp.MustCompile(`(?i)^[1-9][0-9]*\s*(B|KB|MB|GB)$`)
+
+func (v *validator) positive(field string, value int) {
+	if value <= 0 {
+		v.addConfig(field, "value must be greater than zero")
+	}
+}
+
+func (v *validator) validateHTTPURL(field, value string) {
+	parsed, err := url.Parse(strings.TrimSpace(value))
+	if err != nil || parsed.Host == "" || (parsed.Scheme != "http" && parsed.Scheme != "https") {
+		v.addSecret(field, "expected an absolute HTTP or HTTPS URL")
+	}
+}
+
+func validServiceHookEvent(value string) bool {
+	value = strings.ToLower(strings.TrimSpace(value))
+	return strings.HasPrefix(value, "ms.vss-") ||
+		value == "pull request commented on" ||
+		value == "pull request created" ||
+		value == "pull request updated"
 }
 
 func (v *validator) validateUniqueName(field, name string, seen map[string]struct{}) {
@@ -425,7 +468,13 @@ func (v *validator) matchServiceHooks(create []string) {
 		secret := v.loaded.Secrets.ProjectSettings.ServiceHooks[indexes[0]]
 		base := fmt.Sprintf("projectsettings.servicehook[%d]", indexes[0])
 		v.requireSecret(base+".event", secret.Event)
+		if strings.TrimSpace(secret.Event) != "" && !validServiceHookEvent(secret.Event) {
+			v.addSecret(base+".event", "unsupported service hook event")
+		}
 		v.requireSecret(base+".url", secret.URL)
+		if strings.TrimSpace(secret.URL) != "" {
+			v.validateHTTPURL(base+".url", secret.URL)
+		}
 	}
 }
 
@@ -445,6 +494,9 @@ func (v *validator) matchServiceConnections(create []string) {
 		base := fmt.Sprintf("projectsettings.serviceconnections[%d]", index)
 		v.requireSecret(base+".type", secret.Type)
 		v.requireSecret(base+".url", secret.URL)
+		if strings.TrimSpace(secret.URL) != "" {
+			v.validateHTTPURL(base+".url", secret.URL)
+		}
 		v.validateServiceConnection(base, secret)
 	}
 }
@@ -491,6 +543,9 @@ func (v *validator) matchVariableGroups(create []string) {
 		}
 		index := indexes[0]
 		variables := v.loaded.Secrets.Pipelines.Library[index].Variables
+		if len(variables) == 0 {
+			v.addSecret(fmt.Sprintf("pipelines.library[%d].variables", index), "at least one variable is required")
+		}
 		seen := map[string]struct{}{}
 		for j, variable := range variables {
 			base := fmt.Sprintf("pipelines.library[%d].variables[%d]", index, j)

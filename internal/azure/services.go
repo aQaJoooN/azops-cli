@@ -24,11 +24,13 @@ type Service struct {
 var (
 	Projects         = Service{"projects", CollectionScope, []string{"_apis", "projects"}, "7.0"}
 	Identity         = Service{"identity", CollectionScope, []string{"_apis", "identities"}, "7.0"}
+	ProjectIdentity  = Service{"project identity", ProjectScope, []string{"_api", "_identity"}, "7.0"}
 	Graph            = Service{"graph", CollectionScope, []string{"_apis", "graph"}, "7.0-preview.1"}
 	Security         = Service{"security", CollectionScope, []string{"_apis", "securitynamespaces"}, "7.0"}
 	Build            = Service{"build", ProjectScope, []string{"_apis", "build"}, "7.0"}
 	Release          = Service{"release", ProjectScope, []string{"_apis", "release"}, "7.0"}
 	DistributedTask  = Service{"distributedtask", ProjectScope, []string{"_apis", "distributedtask"}, "7.0"}
+	AgentPools       = Service{"agent pools", CollectionScope, []string{"_apis", "distributedtask"}, "7.0"}
 	ServiceHooks     = Service{"hooks", CollectionScope, []string{"_apis", "hooks"}, "7.0"}
 	Dashboards       = Service{"dashboard", ProjectScope, []string{"_apis", "dashboard"}, "7.0-preview.3"}
 	ServiceEndpoints = Service{"serviceendpoint", ProjectScope, []string{"_apis", "serviceendpoint"}, "7.0"}
@@ -68,11 +70,13 @@ func Unsupported(service Service, operation string) error {
 type Services struct {
 	Projects         *Adapter
 	Identity         *Adapter
+	ProjectIdentity  *Adapter
 	Graph            *Adapter
 	Security         *Adapter
 	Build            *Adapter
 	Release          *Adapter
 	DistributedTask  *Adapter
+	AgentPools       *Adapter
 	ServiceHooks     *Adapter
 	Dashboards       *Adapter
 	ServiceEndpoints *Adapter
@@ -82,9 +86,10 @@ type Services struct {
 func NewServices(client *Client) Services {
 	return Services{
 		Projects: NewAdapter(client, Projects), Identity: NewAdapter(client, Identity),
-		Graph: NewAdapter(client, Graph), Security: NewAdapter(client, Security),
-		Build: NewAdapter(client, Build), Release: NewAdapter(client, Release),
-		DistributedTask: NewAdapter(client, DistributedTask), ServiceHooks: NewAdapter(client, ServiceHooks),
+		ProjectIdentity: NewAdapter(client, ProjectIdentity), Graph: NewAdapter(client, Graph),
+		Security: NewAdapter(client, Security), Build: NewAdapter(client, Build),
+		Release: NewAdapter(client, Release), DistributedTask: NewAdapter(client, DistributedTask),
+		AgentPools: NewAdapter(client, AgentPools), ServiceHooks: NewAdapter(client, ServiceHooks),
 		Dashboards: NewAdapter(client, Dashboards), ServiceEndpoints: NewAdapter(client, ServiceEndpoints),
 		Test: NewAdapter(client, Test),
 	}

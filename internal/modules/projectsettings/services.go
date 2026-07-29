@@ -16,7 +16,7 @@ type AccessSnapshot struct {
 // SecurityService manages project groups and project-level access.
 type SecurityService interface {
 	permissions.GroupDirectory
-	CreateGroup(context.Context, string) (permissions.Group, error)
+	CreateGroup(context.Context, string, string) (permissions.Group, error)
 	ReadProjectAccess(context.Context, string) (AccessSnapshot, error)
 	SetProjectAccess(context.Context, string, []permissions.AccessChange) error
 }

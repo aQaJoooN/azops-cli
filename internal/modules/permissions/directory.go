@@ -3,6 +3,8 @@ package permissions
 import (
 	"context"
 	"fmt"
+	"net/url"
+	"sync"
 
 	"azops-cli/internal/azure"
 )
@@ -13,12 +15,13 @@ type Group struct {
 	Descriptor string
 }
 
-// GroupDirectory lists Azure DevOps groups visible to the collection.
+// GroupDirectory lists Azure DevOps groups visible to one project.
 type GroupDirectory interface {
-	ListGroups(context.Context) ([]Group, error)
+	ListGroups(context.Context, string) ([]Group, error)
 }
 
-// AzureGroupDirectory reads groups through the Azure DevOps Graph API.
+// AzureGroupDirectory reads groups through the project-scoped identity API
+// exposed by Azure DevOps Server installations without the Graph API.
 type AzureGroupDirectory struct {
 	adapter *azure.Adapter
 }
@@ -27,25 +30,75 @@ func NewAzureGroupDirectory(adapter *azure.Adapter) *AzureGroupDirectory {
 	return &AzureGroupDirectory{adapter: adapter}
 }
 
-func (directory *AzureGroupDirectory) ListGroups(ctx context.Context) ([]Group, error) {
+func (directory *AzureGroupDirectory) ListGroups(ctx context.Context, project string) ([]Group, error) {
 	if directory == nil || directory.adapter == nil {
-		return nil, fmt.Errorf("group directory requires a graph adapter")
+		return nil, fmt.Errorf("group directory requires a project identity adapter")
 	}
 	var response struct {
-		Value []struct {
-			DisplayName string `json:"displayName"`
-			Descriptor  string `json:"descriptor"`
-		} `json:"value"`
+		Identities []struct {
+			Name string `json:"FriendlyDisplayName"`
+			ID   string `json:"TeamFoundationId"`
+		} `json:"identities"`
 	}
-	if err := directory.adapter.Do(ctx, azure.Request{Path: "groups"}, &response); err != nil {
+	query := url.Values{"__v": {"5"}}
+	if err := directory.adapter.Do(ctx, azure.Request{Project: project, Path: "ReadScopedApplicationGroupsJson", Query: query}, &response); err != nil {
 		return nil, fmt.Errorf("list Azure DevOps groups: %w", err)
 	}
-	groups := make([]Group, 0, len(response.Value))
-	for _, item := range response.Value {
-		if item.DisplayName == "" || item.Descriptor == "" {
-			return nil, fmt.Errorf("Azure DevOps group response contains an empty name or descriptor")
+	groups := make([]Group, 0, len(response.Identities))
+	for _, item := range response.Identities {
+		if item.Name == "" || item.ID == "" {
+			return nil, fmt.Errorf("Azure DevOps group response contains an empty name or ID")
 		}
-		groups = append(groups, Group{Name: item.DisplayName, Descriptor: item.Descriptor})
+		var display struct {
+			Security struct {
+				IdentityType string `json:"descriptorIdentityType"`
+				Identifier   string `json:"descriptorIdentifier"`
+			} `json:"security"`
+		}
+		displayQuery := url.Values{"__v": {"5"}, "tfid": {item.ID}}
+		if err := directory.adapter.Do(ctx, azure.Request{Project: project, Path: "Display", Query: displayQuery}, &display); err != nil {
+			return nil, fmt.Errorf("read Azure DevOps group %q: %w", item.Name, err)
+		}
+		if display.Security.IdentityType == "" || display.Security.Identifier == "" {
+			return nil, fmt.Errorf("Azure DevOps group %q has no security descriptor", item.Name)
+		}
+		groups = append(groups, Group{Name: item.Name, Descriptor: display.Security.IdentityType + ";" + display.Security.Identifier})
 	}
 	return groups, nil
+}
+
+// CachedGroupDirectory shares one immutable group snapshot across all modules
+// in an application run.
+type cachedGroups struct {
+	once   sync.Once
+	groups []Group
+	err    error
+}
+
+type CachedGroupDirectory struct {
+	source GroupDirectory
+	mu     sync.Mutex
+	cache  map[string]*cachedGroups
+}
+
+func NewCachedGroupDirectory(source GroupDirectory) *CachedGroupDirectory {
+	return &CachedGroupDirectory{source: source, cache: make(map[string]*cachedGroups)}
+}
+
+func (directory *CachedGroupDirectory) ListGroups(ctx context.Context, project string) ([]Group, error) {
+	if directory == nil || directory.source == nil {
+		return nil, fmt.Errorf("cached group directory requires a source")
+	}
+	directory.mu.Lock()
+	entry := directory.cache[project]
+	if entry == nil {
+		entry = &cachedGroups{}
+		directory.cache[project] = entry
+	}
+	directory.mu.Unlock()
+	entry.once.Do(func() {
+		entry.groups, entry.err = directory.source.ListGroups(ctx, project)
+		entry.groups = append([]Group(nil), entry.groups...)
+	})
+	return append([]Group(nil), entry.groups...), entry.err
 }

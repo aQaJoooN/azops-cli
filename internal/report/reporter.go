@@ -27,15 +27,10 @@ func (r *Reporter) Warning(message string) error {
 
 // Render writes per-stage module results followed by aggregate counts.
 func (r *Reporter) Render(final domain.FinalResult) error {
+	// Sort stages while preserving detector/registry order within each stage.
 	results := append([]domain.ModuleResult(nil), final.Results...)
 	sort.SliceStable(results, func(i, j int) bool {
-		if results[i].Stage != results[j].Stage {
-			return results[i].Stage < results[j].Stage
-		}
-		if results[i].Component != results[j].Component {
-			return results[i].Component < results[j].Component
-		}
-		return results[i].Module < results[j].Module
+		return results[i].Stage < results[j].Stage
 	})
 
 	var output strings.Builder

@@ -14,7 +14,7 @@ import (
 
 type groupMemory []permissions.Group
 
-func (groups groupMemory) ListGroups(context.Context) ([]permissions.Group, error) {
+func (groups groupMemory) ListGroups(context.Context, string) ([]permissions.Group, error) {
 	return append([]permissions.Group(nil), groups...), nil
 }
 
@@ -110,6 +110,7 @@ func TestEnvironmentRoleReconciliation(t *testing.T) {
 		t.Fatalf("unexpected role change %#v", change)
 	}
 }
+
 type scopedMemory struct {
 	access    AccessSnapshot
 	readPaths []string
@@ -134,7 +135,7 @@ func TestPipelineScopedPathIsCanonical(t *testing.T) {
 	input := domain.ModuleInput{DesiredState: config.Config{
 		General: pipelineGeneral(),
 		Pipelines: config.PipelinesConfig{Pipelines: &config.ScopedPermissionsConfig{Permissions: []config.ScopedPermissions{{
-			Path: ` folder\child/ `,
+			Path:       ` folder\child/ `,
 			Permission: config.AccessAssignments{"View": {config.AccessAllow: {"11"}}},
 		}}}},
 	}}
@@ -195,6 +196,7 @@ func TestLibraryPlanAndResultAreSecretSafe(t *testing.T) {
 		t.Fatalf("result summary disclosed secret: %q", result.Changes[0].Summary)
 	}
 }
+
 type unsupportedTaskGroups struct{}
 
 func (unsupportedTaskGroups) ReadTaskGroupAccess(context.Context, string) (AccessSnapshot, error) {

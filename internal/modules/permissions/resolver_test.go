@@ -57,17 +57,24 @@ func TestResolverExpandsAliasesAllAndCachesDirectory(t *testing.T) {
 	requests := 0
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		requests++
-		if request.URL.EscapedPath() != "/_apis/graph/groups" || request.URL.Query().Get("api-version") != "7.0-preview.1" {
-			t.Errorf("unexpected Graph request: %s", request.URL.String())
-		}
 		writer.Header().Set("Content-Type", "application/json")
-		_, _ = writer.Write([]byte(`{"value":[
-			{"displayName":"Project Dev Admins","descriptor":"d1"},
-			{"displayName":"Project Dev Readers","descriptor":"d2"},
-			{"displayName":"Project Extra","descriptor":"d3"},
-			{"displayName":"Other Project","descriptor":"d4"},
-			{"displayName":"Project Duplicate","descriptor":"d1"}
-		]}`))
+		switch request.URL.Path {
+		case "/Project/_api/_identity/ReadScopedApplicationGroupsJson":
+			if request.URL.Query().Get("__v") != "5" || request.URL.Query().Get("api-version") != "7.0" {
+				t.Errorf("unexpected group query: %s", request.URL.RawQuery)
+			}
+			_, _ = writer.Write([]byte(`{"identities":[
+				{"FriendlyDisplayName":"Project Dev Admins","TeamFoundationId":"id1"},
+				{"FriendlyDisplayName":"Project Dev Readers","TeamFoundationId":"id2"},
+				{"FriendlyDisplayName":"Project Extra","TeamFoundationId":"id3"},
+				{"FriendlyDisplayName":"Other Project","TeamFoundationId":"id4"}
+			]}`))
+		case "/Project/_api/_identity/Display":
+			id := request.URL.Query().Get("tfid")
+			_, _ = writer.Write([]byte(`{"security":{"descriptorIdentityType":"type","descriptorIdentifier":"` + id + `"}}`))
+		default:
+			http.NotFound(writer, request)
+		}
 	}))
 	defer server.Close()
 	client, err := azure.NewClient(server.URL, "test-pat")
@@ -77,7 +84,7 @@ func TestResolverExpandsAliasesAllAndCachesDirectory(t *testing.T) {
 	resolver, err := NewResolver(config.GeneralConfig{
 		TeamProjectName: "Project", GroupNameTemplate: "teamprojectname team role",
 		GroupsAlias: map[string]map[string]string{"Dev": {"Admins": "11", "Readers": "12"}},
-	}, NewAzureGroupDirectory(azure.NewAdapter(client, azure.Graph)))
+	}, NewAzureGroupDirectory(azure.NewAdapter(client, azure.ProjectIdentity)))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -90,10 +97,10 @@ func TestResolverExpandsAliasesAllAndCachesDirectory(t *testing.T) {
 	for index, principal := range principals {
 		got[index] = principal.Descriptor
 	}
-	if want := []string{"d1", "d2", "d3"}; !reflect.DeepEqual(got, want) {
+	if want := []string{"type;id1", "type;id2", "type;id3"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("descriptors = %#v, want %#v", got, want)
 	}
-	if _, err := resolver.Resolve(context.Background(), []config.GroupSelector{"12"}); err != nil || requests != 1 {
+	if _, err := resolver.Resolve(context.Background(), []config.GroupSelector{"12"}); err != nil || requests != 5 {
 		t.Fatalf("cached resolve: requests = %d, err = %v", requests, err)
 	}
 	if _, err := resolver.Resolve(context.Background(), []config.GroupSelector{"99"}); err == nil {

@@ -13,7 +13,7 @@ import (
 
 type securityModule struct{ service SecurityService }
 
-type createGroupPayload struct{ Name string }
+type createGroupPayload struct{ Project, Name string }
 type accessPayload struct {
 	Project string
 	Changes []permissions.AccessChange
@@ -34,7 +34,7 @@ func (module *securityModule) Plan(ctx context.Context, input domain.ModuleInput
 	if module.service == nil {
 		return plan, moduleError(module, "read current state", fmt.Errorf("security service is required"))
 	}
-	groups, err := module.service.ListGroups(ctx)
+	groups, err := module.service.ListGroups(ctx, cfg.General.TeamProjectName)
 	if err != nil {
 		return plan, moduleError(module, "list groups", err)
 	}
@@ -103,7 +103,7 @@ func (module *securityModule) planGroups(general config.GeneralConfig, create bo
 					return nil, nil, fmt.Errorf("group alias %q resolves to missing Azure DevOps group %q", alias, name)
 				}
 				group = permissions.Group{Name: name, Descriptor: "pending:" + name}
-				operations = append(operations, domain.Operation{Kind: domain.OperationCreate, Resource: name, Summary: "create project group " + name, Payload: createGroupPayload{Name: name}})
+				operations = append(operations, domain.Operation{Kind: domain.OperationCreate, Resource: name, Summary: "create project group " + name, Payload: createGroupPayload{Project: general.TeamProjectName, Name: name}})
 			}
 			principal := permissions.Principal{Alias: alias, Name: name, Descriptor: group.Descriptor}
 			principals[alias] = []permissions.Principal{principal}
@@ -141,7 +141,7 @@ func (module *securityModule) Apply(ctx context.Context, plan domain.Plan) (doma
 	for _, operation := range plan.Operations {
 		switch payload := operation.Payload.(type) {
 		case createGroupPayload:
-			group, err := module.service.CreateGroup(ctx, payload.Name)
+			group, err := module.service.CreateGroup(ctx, payload.Project, payload.Name)
 			if err != nil {
 				return result, moduleError(module, "create group "+payload.Name, err)
 			}

@@ -41,7 +41,9 @@ func TestAdapterBuildsAuthenticatedProjectRequest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var result struct{ ID int `json:"id"` }
+	var result struct {
+		ID int `json:"id"`
+	}
 	err = NewAdapter(client, Build).Do(context.Background(), Request{
 		Project: "Team Project", Method: http.MethodPost, Path: "definitions/Folder One",
 		Query: url.Values{"name": {"build one"}}, Body: map[string]string{"name": "definition"},
@@ -101,13 +103,13 @@ func TestClientReturnsBoundedSanitizedAPIError(t *testing.T) {
 }
 
 func TestServicesUseServerCompatibleVersionsAndScopes(t *testing.T) {
-	services := []Service{Projects, Identity, Graph, Security, Build, Release, DistributedTask, ServiceHooks, Dashboards, ServiceEndpoints, Test}
+	services := []Service{Projects, Identity, ProjectIdentity, Graph, Security, Build, Release, DistributedTask, AgentPools, ServiceHooks, Dashboards, ServiceEndpoints, Test}
 	for _, service := range services {
 		if service.APIVersion == "" || service.Name == "" || len(service.Prefix) == 0 {
 			t.Errorf("incomplete service: %#v", service)
 		}
 	}
-	if Build.Scope != ProjectScope || Projects.Scope != CollectionScope {
+	if Build.Scope != ProjectScope || ProjectIdentity.Scope != ProjectScope || Projects.Scope != CollectionScope || AgentPools.Scope != CollectionScope {
 		t.Fatal("service scopes are invalid")
 	}
 	var unsupported *UnsupportedOperationError

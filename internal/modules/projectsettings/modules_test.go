@@ -127,10 +127,10 @@ type securityMemory struct {
 	accessWrites [][]permissions.AccessChange
 }
 
-func (s *securityMemory) ListGroups(context.Context) ([]permissions.Group, error) {
+func (s *securityMemory) ListGroups(context.Context, string) ([]permissions.Group, error) {
 	return append([]permissions.Group(nil), s.groups...), nil
 }
-func (s *securityMemory) CreateGroup(_ context.Context, name string) (permissions.Group, error) {
+func (s *securityMemory) CreateGroup(_ context.Context, _, name string) (permissions.Group, error) {
 	group := permissions.Group{Name: name, Descriptor: "descriptor:" + name}
 	s.groups = append(s.groups, group)
 	s.created = append(s.created, name)

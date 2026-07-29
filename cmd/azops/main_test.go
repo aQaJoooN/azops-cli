@@ -23,7 +23,7 @@ func TestRunDryRunReportsPlannedChangeWithoutMutation(t *testing.T) {
 		requests.Add(1)
 		assertGraphRequest(t, request)
 		writer.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(writer, `{"value":[]}`)
+		fmt.Fprint(writer, `{"identities":[]}`)
 	}))
 	defer server.Close()
 
@@ -47,9 +47,17 @@ func TestRunDryRunReportsPlannedChangeWithoutMutation(t *testing.T) {
 
 func TestRunDryRunReportsNoOp(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		assertGraphRequest(t, request)
 		writer.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(writer, `{"value":[{"displayName":"project Dev Readers","descriptor":"group-14"}]}`)
+		if request.URL.Path == "/project/_api/_identity/ReadScopedApplicationGroupsJson" {
+			assertGraphRequest(t, request)
+			fmt.Fprint(writer, `{"identities":[{"FriendlyDisplayName":"project Dev Readers","TeamFoundationId":"group-id"}]}`)
+			return
+		}
+		if request.URL.Path == "/project/_api/_identity/Display" && request.URL.Query().Get("tfid") == "group-id" {
+			fmt.Fprint(writer, `{"security":{"descriptorIdentityType":"type","descriptorIdentifier":"group-14"}}`)
+			return
+		}
+		http.NotFound(writer, request)
 	}))
 	defer server.Close()
 
@@ -137,8 +145,8 @@ func writeFixture(t *testing.T, dir, name, content string) string {
 
 func assertGraphRequest(t *testing.T, request *http.Request) {
 	t.Helper()
-	if request.Method != http.MethodGet || request.URL.Path != "/_apis/graph/groups" || request.URL.Query().Get("api-version") != "7.0-preview.1" {
-		t.Errorf("unexpected request %s %s", request.Method, request.URL.String())
+	if request.Method != http.MethodGet || request.URL.Path != "/project/_api/_identity/ReadScopedApplicationGroupsJson" || request.URL.Query().Get("__v") != "5" || request.URL.Query().Get("api-version") != "7.0" {
+		t.Errorf("unexpected identity request %s %s", request.Method, request.URL.String())
 	}
 	_, password, ok := request.BasicAuth()
 	if !ok || password != testPAT {

@@ -78,7 +78,7 @@ func (resolver *Resolver) Resolve(ctx context.Context, selectors []config.GroupS
 	if resolver == nil || resolver.directory == nil {
 		return nil, fmt.Errorf("group resolver requires a directory")
 	}
-	resolver.once.Do(func() { resolver.groups, resolver.loadError = resolver.directory.ListGroups(ctx) })
+	resolver.once.Do(func() { resolver.groups, resolver.loadError = resolver.directory.ListGroups(ctx, resolver.project) })
 	if resolver.loadError != nil {
 		return nil, resolver.loadError
 	}

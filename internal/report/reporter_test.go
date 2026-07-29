@@ -29,9 +29,9 @@ func TestReporterRendersDeterministicRedactedStageAndFinalSummaries(t *testing.T
 		t.Fatal(err)
 	}
 	want := "Stage 1\n" +
-		"  projectsettings.repositories: failed\n    error: permission denied for [REDACTED]\n" +
 		"  projectsettings.security: changed\n    change: updated [REDACTED]\n" +
 		"  projectsettings.settings: unchanged\n" +
+		"  projectsettings.repositories: failed\n    error: permission denied for [REDACTED]\n" +
 		"Stage 2\n  pipelines.library: planned\n" +
 		"    planned: create variable a\n    planned: update variable z\n" +
 		"Final: failed (changed=1 unchanged=1 planned=1 failed=1)\n"

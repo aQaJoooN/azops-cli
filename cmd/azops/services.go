@@ -12,11 +12,11 @@ import (
 )
 
 func applicationDependencies(services azure.Services) detector.Dependencies {
-	directory := permissions.NewAzureGroupDirectory(services.Graph)
+	directory := permissions.NewCachedGroupDirectory(permissions.NewAzureGroupDirectory(services.ProjectIdentity))
 	unsupported := unsupportedServices{}
 	return detector.Dependencies{
 		GroupDirectory:     directory,
-		Security:           projectsettings.NewAzureSecurityService(services),
+		Security:           projectsettings.NewAzureSecurityService(services, directory),
 		Repositories:       unsupported,
 		Dashboards:         unsupported,
 		AgentPools:         unsupported,
