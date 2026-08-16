@@ -1,0 +1,314 @@
+digraph azops_cli {
+    graph [
+        label="azops-cli Architecture"
+        labelloc=t
+        fontsize=20
+        fontname="Helvetica"
+        rankdir=TB
+        splines=polyline
+        nodesep=0.6
+        ranksep=0.9
+        bgcolor="#F8F9FA"
+        pad=0.5
+    ]
+    node [fontname="Helvetica" fontsize=11 style="filled,rounded" shape=box margin="0.15,0.1"]
+    edge [fontname="Helvetica" fontsize=9 color="#555555"]
+
+    // ─── Entry Point ───────────────────────────────────────────────────────────
+    subgraph cluster_cmd {
+        label="cmd/azops  (main)"
+        style=filled color="#E3F2FD" fontcolor="#0D47A1" fontsize=13
+        node [fillcolor="#BBDEFB" color="#1976D2"]
+
+        main        [label="main()\nsignal + os.Exit"]
+        run         [label="run()\norchestrate startup"]
+        appDeps     [label="applicationDependencies()\nbind services → Dependencies"]
+        unsupported [label="unsupportedServices{}\nnoop stubs"]
+    }
+
+    main -> run
+    run  -> appDeps
+    appDeps -> unsupported [style=dashed label="implements\nmissing services"]
+
+    // ─── CLI ───────────────────────────────────────────────────────────────────
+    subgraph cluster_cli {
+        label="internal/cli"
+        style=filled color="#E8F5E9" fontcolor="#1B5E20" fontsize=13
+        node [fillcolor="#C8E6C9" color="#388E3C"]
+
+        cliParse  [label="Parse(args)\n→ Command"]
+        cliConn   [label="ResolveConnection(url, lookup)\n→ Connection{URL, PAT}"]
+        Command   [label="Command{Selection, ConfigPath,\nSecretPath, URL, DryRun}"]
+        Selection [label="Selection{Kind, Path}"]
+    }
+
+    run -> cliParse
+    run -> cliConn
+    cliParse -> Command
+    cliParse -> Selection
+    Command -> Selection
+
+    // ─── Config ────────────────────────────────────────────────────────────────
+    subgraph cluster_config {
+        label="internal/config"
+        style=filled color="#FFF3E0" fontcolor="#E65100" fontsize=13
+        node [fillcolor="#FFE0B2" color="#F57C00"]
+
+        cfgLoader    [label="Loader.Load()\n→ LoadedInputs"]
+        cfgValidator [label="Validate(selection, inputs)"]
+        cfgTypes     [label="Config / Secrets\n(YAML desired state)"]
+        cfgEnums     [label="EnableDisable / OnOff\nAccessValue / Role"]
+    }
+
+    run -> cfgLoader
+    cfgLoader -> cfgTypes
+    run -> cfgValidator
+    cfgValidator -> cfgTypes [style=dashed]
+    cfgTypes -> cfgEnums [style=dashed label="uses"]
+
+    // ─── Azure ─────────────────────────────────────────────────────────────────
+    subgraph cluster_azure {
+        label="internal/azure"
+        style=filled color="#FCE4EC" fontcolor="#880E4F" fontsize=13
+        node [fillcolor="#F8BBD0" color="#C2185B"]
+
+        azClient   [label="Client{baseURL, pat, httpClient}\nNewClient()"]
+        azAdapter  [label="Adapter{client, service}\nDo(ctx, Request, output)"]
+        azServices [label="Services{Projects, Identity,\nGraph, Security, Build,\nRelease, DistributedTask,\nAgentPools, ServiceHooks,\nDashboards, ServiceEndpoints, Test}\nNewServices()"]
+        azSvcDef   [label="Service{Name, Scope,\nPrefix, APIVersion}\n(13 constants)"]
+        azUnsup    [label="Unsupported()\n→ UnsupportedOperationError"]
+    }
+
+    run -> azClient [label="NewClient(url, PAT)"]
+    azClient -> azAdapter [label="wraps"]
+    azAdapter -> azServices [label="grouped into"]
+    azServices -> azSvcDef [style=dashed label="typed by"]
+    appDeps -> azServices [label="NewServices(client)"]
+    azServices -> azUnsup [style=dashed label="stub returns"]
+
+    // ─── Report ────────────────────────────────────────────────────────────────
+    subgraph cluster_report {
+        label="internal/report"
+        style=filled color="#EDE7F6" fontcolor="#311B92" fontsize=13
+        node [fillcolor="#D1C4E9" color="#512DA8"]
+
+        reporter [label="Reporter{writer, redactor}\nWarning() / Render()"]
+        redactor [label="Redactor{replacer}\nNewRedactor(pat, secrets)\nRedact(value)"]
+    }
+
+    run -> reporter [label="New(stdout, redactor)"]
+    run -> redactor [label="NewRedactor(PAT, secrets)"]
+    reporter -> redactor [label="passes output through"]
+
+    // ─── Domain ────────────────────────────────────────────────────────────────
+    subgraph cluster_domain {
+        label="internal/domain"
+        style=filled color="#E0F2F1" fontcolor="#004D40" fontsize=13
+        node [fillcolor="#B2DFDB" color="#00796B"]
+
+        domModule    [label="Module interface\nID() / Component()\nPlan() / Apply()"]
+        domPlan      [label="Plan{Module, Component,\nOperations[]Operation}"]
+        domExecGraph [label="ExecutionGraph\n{Stages[]ExecutionStage}"]
+        domExecStage [label="ExecutionStage\n{Number, Modules[]Module}"]
+        domResult    [label="ModuleResult / FinalResult\nOutcome enum"]
+        domErrors    [label="UsageError / DiscoveryError\nDecodeError / ValidationError\nConnectionError / APIError\nModuleError"]
+    }
+
+    domModule -> domPlan      [style=dashed label="returns"]
+    domExecGraph -> domExecStage [label="contains"]
+    domExecStage -> domModule    [label="holds"]
+    domModule -> domResult    [style=dashed label="produces"]
+
+    // ─── Detector ──────────────────────────────────────────────────────────────
+    subgraph cluster_detector {
+        label="internal/detector"
+        style=filled color="#FFF9C4" fontcolor="#F57F17" fontsize=13
+        node [fillcolor="#FFF176" color="#F9A825"]
+
+        detRegistry  [label="Registry{ordered, byPath}\nNewRegistry(deps)"]
+        detDeps      [label="Dependencies{\n  GroupDirectory\n  Security / Repositories\n  Dashboards / AgentPools\n  Release / ServiceConnections\n  Test / ServiceHook\n  Settings / Overview\n  Environments / Library\n  TaskGroups / DeploymentGroup\n  PipelineAccess / ReleaseAccess\n}"]
+        detDetector  [label="Detector{registry}\nNew(registry)\nDetect(selection, config)\n→ ExecutionGraph"]
+    }
+
+    run -> detDetector  [label="New(registry).Detect(...)"]
+    run -> detRegistry  [label="NewRegistry(deps)"]
+    detRegistry -> detDeps [label="consumes"]
+    detDetector -> detRegistry [label="uses"]
+    detDetector -> domExecGraph [label="builds"]
+    appDeps -> detDeps  [label="fills"]
+
+    // ─── Runner ────────────────────────────────────────────────────────────────
+    subgraph cluster_runner {
+        label="internal/runner"
+        style=filled color="#ECEFF1" fontcolor="#263238" fontsize=13
+        node [fillcolor="#CFD8DC" color="#455A64"]
+
+        runner     [label="Runner{}\nNew()\nRun(ctx, graph, input, opts)\n→ FinalResult"]
+        runStage   [label="runStage()\nconcurrent goroutines\n(sync.WaitGroup)"]
+        runModule  [label="runModule()\nPlan → Apply\nor DryRun → Planned"]
+    }
+
+    run -> runner    [label="New().Run(ctx, graph, input, opts)"]
+    runner -> runStage  [label="per stage"]
+    runStage -> runModule [label="goroutine per module"]
+    runModule -> domModule [label="calls Plan() / Apply()"]
+    runner -> domResult [label="aggregates →"]
+
+    // ─── Permissions (shared) ──────────────────────────────────────────────────
+    subgraph cluster_permissions {
+        label="internal/modules/permissions"
+        style=filled color="#F3E5F5" fontcolor="#4A148C" fontsize=13
+        node [fillcolor="#E1BEE7" color="#7B1FA2"]
+
+        permDir    [label="GroupDirectory interface\nListGroups(ctx, project)"]
+        permAzDir  [label="AzureGroupDirectory\nNewAzureGroupDirectory(adapter)"]
+        permCache  [label="CachedGroupDirectory\nNewCachedGroupDirectory(source)\n(sync.Once per project)"]
+        permPlan   [label="PlanAccess(assignments, bits,\nprincipals, current)\n→ []AccessChange"]
+        permRoles  [label="PlanRoles(assignments,\nprincipals, current, supported)\n→ []RoleChange"]
+        permGroup  [label="Group{Name, Descriptor}\nPrincipal{Alias, Name, Descriptor}"]
+    }
+
+    permDir  -> permAzDir [label="implemented by"]
+    permAzDir -> permCache [label="wrapped by"]
+    permCache -> permDir  [style=dashed label="satisfies"]
+    appDeps -> permCache  [label="NewCachedGroupDirectory(...)"]
+
+    // ─── ProjectSettings modules ───────────────────────────────────────────────
+    subgraph cluster_ps_modules {
+        label="internal/modules/projectsettings  (stage 1-2, 5-6)"
+        style=filled color="#E8EAF6" fontcolor="#1A237E" fontsize=13
+        node [fillcolor="#C5CAE9" color="#303F9F"]
+
+        psSecurity   [label="securityModule\nstage 1\nNewSecurity(SecurityService)"]
+        psRepos      [label="repositoriesModule\nstage 2\nNewRepositories(...)"]
+        psDash       [label="dashboardsModule\nstage 2\nNewDashboards(...)"]
+        psAgents     [label="agentPoolsModule\nstage 2\nNewAgentPools(...)"]
+        psRelease    [label="releaseModule\nstage 2\nNewRelease(...)"]
+        psSvcConn    [label="serviceConnectionsModule\nstage 2\nNewServiceConnections(...)"]
+        psTest       [label="testModule\nstage 2\nNewTest(...)"]
+        psSvcHook    [label="serviceHookModule\nstage 5\nNewServiceHook(...)"]
+        psSettings   [label="settingsModule\nstage 6\nNewSettings(...)"]
+        psOverview   [label="overviewModule\nstage 6\nNewOverview(...)"]
+
+        psSecSvc  [label="SecurityService\n(GroupDirectory + CreateGroup\n+ ReadProjectAccess\n+ SetProjectAccess)"]
+        psRepoSvc [label="RepositoryService"]
+        psDashSvc [label="DashboardService"]
+        psAgentSvc [label="AgentPoolService"]
+        psRelSvc  [label="ReleaseService"]
+        psSvcCSvc [label="ServiceConnectionService"]
+        psTestSvc [label="TestService"]
+        psSvcHSvc [label="ServiceHookService"]
+        psSetSvc  [label="SettingsService"]
+        psOvSvc   [label="OverviewService"]
+    }
+
+    psSecurity -> psSecSvc   [label="uses"]
+    psRepos    -> psRepoSvc  [label="uses"]
+    psDash     -> psDashSvc  [label="uses"]
+    psAgents   -> psAgentSvc [label="uses"]
+    psRelease  -> psRelSvc   [label="uses"]
+    psSvcConn  -> psSvcCSvc  [label="uses"]
+    psTest     -> psTestSvc  [label="uses"]
+    psSvcHook  -> psSvcHSvc  [label="uses"]
+    psSettings -> psSetSvc   [label="uses"]
+    psOverview -> psOvSvc    [label="uses"]
+
+    psSecurity -> permPlan  [label="PlanAccess()"]
+    psSecurity -> permRoles [style=dashed]
+    psRepos    -> permPlan  [label="PlanAccess()"]
+    psAgents   -> permRoles [label="PlanRoles()"]
+    psSvcConn  -> permRoles [label="PlanRoles()"]
+    psSecurity -> permGroup [style=dashed]
+
+    // ─── Pipelines modules ─────────────────────────────────────────────────────
+    subgraph cluster_pl_modules {
+        label="internal/modules/pipelines  (stage 3-4)"
+        style=filled color="#E1F5FE" fontcolor="#01579B" fontsize=13
+        node [fillcolor="#B3E5FC" color="#0288D1"]
+
+        plEnv    [label="environmentsModule\nstage 3\nNewEnvironments(...)"]
+        plLib    [label="libraryModule\nstage 3\nNewLibrary(...)"]
+        plTask   [label="taskGroupsModule\nstage 3\nNewTaskGroups(...)"]
+        plDeploy [label="deploymentGroupModule\nstage 3\nNewDeploymentGroup(...)"]
+        plPipes  [label="pipelinesModule\nstage 4\nNewPipelines(...)"]
+        plRel    [label="releasesModule\nstage 4\nNewReleases(...)"]
+
+        plEnvSvc  [label="EnvironmentService"]
+        plLibSvc  [label="LibraryService"]
+        plTaskSvc [label="TaskGroupService"]
+        plDeplSvc [label="DeploymentGroupService"]
+        plScopSvc [label="ScopedPermissionService"]
+    }
+
+    plEnv    -> plEnvSvc  [label="uses"]
+    plLib    -> plLibSvc  [label="uses"]
+    plTask   -> plTaskSvc [label="uses"]
+    plDeploy -> plDeplSvc [label="uses"]
+    plPipes  -> plScopSvc [label="uses"]
+    plRel    -> plScopSvc [label="uses"]
+
+    plEnv    -> permRoles [label="PlanRoles()"]
+    plLib    -> permRoles [label="PlanRoles()"]
+    plTask   -> permPlan  [label="PlanAccess()"]
+    plDeploy -> permRoles [label="PlanRoles()"]
+    plPipes  -> permPlan  [label="PlanAccess()"]
+    plRel    -> permPlan  [label="PlanAccess()"]
+
+    // ─── Domain interface wiring ───────────────────────────────────────────────
+    psSecurity -> domModule [style=dashed label="implements"]
+    psRepos    -> domModule [style=dashed]
+    psDash     -> domModule [style=dashed]
+    psAgents   -> domModule [style=dashed]
+    psRelease  -> domModule [style=dashed]
+    psSvcConn  -> domModule [style=dashed]
+    psTest     -> domModule [style=dashed]
+    psSvcHook  -> domModule [style=dashed]
+    psSettings -> domModule [style=dashed]
+    psOverview -> domModule [style=dashed]
+    plEnv      -> domModule [style=dashed]
+    plLib      -> domModule [style=dashed]
+    plTask     -> domModule [style=dashed]
+    plDeploy   -> domModule [style=dashed]
+    plPipes    -> domModule [style=dashed]
+    plRel      -> domModule [style=dashed]
+
+    // ─── Registry factory wiring ───────────────────────────────────────────────
+    detRegistry -> psSecurity [label="factory→" style=dashed]
+    detRegistry -> psRepos    [style=dashed]
+    detRegistry -> psDash     [style=dashed]
+    detRegistry -> psAgents   [style=dashed]
+    detRegistry -> psRelease  [style=dashed]
+    detRegistry -> psSvcConn  [style=dashed]
+    detRegistry -> psTest     [style=dashed]
+    detRegistry -> psSvcHook  [style=dashed]
+    detRegistry -> psSettings [style=dashed]
+    detRegistry -> psOverview [style=dashed]
+    detRegistry -> plEnv      [style=dashed]
+    detRegistry -> plLib      [style=dashed]
+    detRegistry -> plTask     [style=dashed]
+    detRegistry -> plDeploy   [style=dashed]
+    detRegistry -> plPipes    [style=dashed]
+    detRegistry -> plRel      [style=dashed]
+
+    // ─── Azure services wired to module services ───────────────────────────────
+    subgraph cluster_azure_impl {
+        label="internal/modules/projectsettings  (azure_services.go)"
+        style=filled color="#FCE4EC" fontcolor="#880E4F" fontsize=11
+        node [fillcolor="#F8BBD0" color="#C2185B"]
+
+        azSecImpl  [label="AzureSecurityService\nNewAzureSecurityService(services, dir)"]
+        azHookImpl [label="AzureServiceHookService\nNewAzureServiceHookService(services)"]
+    }
+
+    azServices -> azSecImpl  [label="uses adapters"]
+    azServices -> azHookImpl [label="uses adapters"]
+    azSecImpl  -> psSecSvc   [style=dashed label="implements"]
+    azHookImpl -> psSvcHSvc  [style=dashed label="implements"]
+
+    // ─── Error types used across layers ───────────────────────────────────────
+    domErrors -> run      [style=dashed color="#999999" label="bubbles to"]
+    domErrors -> reporter [style=dashed color="#999999"]
+
+    // ─── Output flow ──────────────────────────────────────────────────────────
+    runner -> reporter [label="Render(FinalResult)"]
+}
