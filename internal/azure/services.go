@@ -25,6 +25,7 @@ var (
 	Projects         = Service{"projects", CollectionScope, []string{"_apis", "projects"}, "7.0"}
 	Identity         = Service{"identity", CollectionScope, []string{"_apis", "identities"}, "7.0"}
 	ProjectIdentity  = Service{"project identity", ProjectScope, []string{"_api", "_identity"}, "7.0"}
+	ProjectSecurity  = Service{"project security", ProjectScope, []string{"_api", "_security"}, "7.0"}
 	Graph            = Service{"graph", CollectionScope, []string{"_apis", "graph"}, "7.0-preview.1"}
 	Security         = Service{"security", CollectionScope, []string{"_apis", "securitynamespaces"}, "7.0"}
 	Build            = Service{"build", ProjectScope, []string{"_apis", "build"}, "7.0"}
@@ -71,6 +72,7 @@ type Services struct {
 	Projects         *Adapter
 	Identity         *Adapter
 	ProjectIdentity  *Adapter
+	ProjectSecurity  *Adapter
 	Graph            *Adapter
 	Security         *Adapter
 	Build            *Adapter
@@ -86,7 +88,8 @@ type Services struct {
 func NewServices(client *Client) Services {
 	return Services{
 		Projects: NewAdapter(client, Projects), Identity: NewAdapter(client, Identity),
-		ProjectIdentity: NewAdapter(client, ProjectIdentity), Graph: NewAdapter(client, Graph),
+		ProjectIdentity: NewAdapter(client, ProjectIdentity), ProjectSecurity: NewAdapter(client, ProjectSecurity),
+		Graph: NewAdapter(client, Graph),
 		Security: NewAdapter(client, Security), Build: NewAdapter(client, Build),
 		Release: NewAdapter(client, Release), DistributedTask: NewAdapter(client, DistributedTask),
 		AgentPools: NewAdapter(client, AgentPools), ServiceHooks: NewAdapter(client, ServiceHooks),

@@ -13,6 +13,7 @@ import (
 type Group struct {
 	Name       string
 	Descriptor string
+	TFID       string // TeamFoundationId GUID, used for internal identity API calls
 }
 
 // GroupDirectory lists Azure DevOps groups visible to one project.
@@ -62,7 +63,7 @@ func (directory *AzureGroupDirectory) ListGroups(ctx context.Context, project st
 		if display.Security.IdentityType == "" || display.Security.Identifier == "" {
 			return nil, fmt.Errorf("Azure DevOps group %q has no security descriptor", item.Name)
 		}
-		groups = append(groups, Group{Name: item.Name, Descriptor: display.Security.IdentityType + ";" + display.Security.Identifier})
+		groups = append(groups, Group{Name: item.Name, Descriptor: display.Security.IdentityType + ";" + display.Security.Identifier, TFID: item.ID})
 	}
 	return groups, nil
 }

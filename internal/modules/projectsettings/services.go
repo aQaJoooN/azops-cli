@@ -11,6 +11,9 @@ import (
 type AccessSnapshot struct {
 	Bits   map[config.PermissionName]permissions.AccessBit
 	Values map[string]map[permissions.AccessBit]config.AccessValue
+	// PermEntries holds the full Display permission metadata per name,
+	// used by SetProjectAccess to resolve the correct token/namespaceId.
+	PermEntries map[config.PermissionName]displayPermission
 }
 
 // SecurityService manages project groups and project-level access.

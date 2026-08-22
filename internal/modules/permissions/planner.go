@@ -7,8 +7,32 @@ import (
 	"azops-cli/internal/config"
 )
 
-// AccessBit identifies one permission's Azure DevOps security bit.
-type AccessBit uint32
+// AccessBit identifies one permission's Azure DevOps security bit, optionally
+// namespaced. The high 32 bits encode a namespace discriminator (FNV-32 hash of
+// the namespaceId string) so that permissions from different namespaces with the
+// same raw bit value can be stored without collision. The low 32 bits are the
+// raw Azure DevOps permission bit sent in API payloads.
+type AccessBit uint64
+
+// RawBit returns the raw Azure DevOps permission bit (low 32 bits).
+func (b AccessBit) RawBit() uint32 { return uint32(b & 0xFFFFFFFF) }
+
+// MakeAccessBit combines a namespace discriminator with a raw permission bit.
+// namespaceID should be the namespaceId string from the Display response.
+func MakeAccessBit(namespaceID string, rawBit int) AccessBit {
+	h := fnv32(namespaceID)
+	return AccessBit(uint64(h)<<32 | uint64(uint32(rawBit)))
+}
+
+// fnv32 is a minimal FNV-1a 32-bit hash used solely for namespace discrimination.
+func fnv32(s string) uint32 {
+	var h uint32 = 2166136261
+	for i := 0; i < len(s); i++ {
+		h ^= uint32(s[i])
+		h *= 16777619
+	}
+	return h
+}
 
 // AccessChange is one required access-bit assignment.
 type AccessChange struct {
