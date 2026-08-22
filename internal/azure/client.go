@@ -22,13 +22,14 @@ const (
 
 // Request describes one Azure DevOps REST request.
 type Request struct {
-	Service    Service
-	Project    string
-	Method     string
-	Path       string
-	APIVersion string
-	Query      url.Values
-	Body       any
+	Service        Service
+	Project        string
+	Method         string
+	Path           string
+	APIVersion     string
+	SkipAPIVersion bool // when true, no api-version query param is added
+	Query          url.Values
+	Body           any
 }
 
 // Client sends authenticated requests to one Azure DevOps collection.
@@ -126,7 +127,7 @@ func (client *Client) newRequest(ctx context.Context, request Request) (*http.Re
 	if version == "" {
 		version = request.Service.APIVersion
 	}
-	if version == "" {
+	if version == "" && !request.SkipAPIVersion {
 		return nil, &domain.ConnectionError{Message: "Azure DevOps API version is required"}
 	}
 
@@ -142,7 +143,9 @@ func (client *Client) newRequest(ctx context.Context, request Request) (*http.Re
 	endpoint.Path = joinPath(endpoint.Path, segments)
 	endpoint.RawPath = joinEscapedPath(client.baseURL.EscapedPath(), segments)
 	query := cloneQuery(request.Query)
-	query.Set("api-version", version)
+	if !request.SkipAPIVersion && version != "" {
+		query.Set("api-version", version)
+	}
 	endpoint.RawQuery = query.Encode()
 
 	var body io.Reader

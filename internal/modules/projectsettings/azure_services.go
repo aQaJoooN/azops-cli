@@ -358,3 +358,336 @@ func (UnsupportedOverviewService) ReadOverview(context.Context, string) (config.
 func (UnsupportedOverviewService) SetOverview(context.Context, string, config.OverviewConfig) error {
 	return azure.Unsupported(azure.Projects, "set project feature states")
 }
+
+// repoNamespaceID is the fixed Azure DevOps Git repository security namespace ID.
+const repoNamespaceID = "2e9eb7ed-3c0a-47d4-87c1-0ffdd275fd87"
+
+// repoPermissionBits maps config.yaml permission names to the confirmed repository namespace bits.
+var repoPermissionBits = map[config.PermissionName]permissions.AccessBit{
+	"Administer":                                      permissions.MakeAccessBit(repoNamespaceID, 1),
+	"Read":                                            permissions.MakeAccessBit(repoNamespaceID, 2),
+	"Contribute":                                      permissions.MakeAccessBit(repoNamespaceID, 4),
+	"Force_push":                                      permissions.MakeAccessBit(repoNamespaceID, 8),
+	"Create_branch":                                   permissions.MakeAccessBit(repoNamespaceID, 16),
+	"Create_tag":                                      permissions.MakeAccessBit(repoNamespaceID, 32),
+	"Manage_notes":                                    permissions.MakeAccessBit(repoNamespaceID, 64),
+	"Bypass_policies_when_completing_pull_requests":   permissions.MakeAccessBit(repoNamespaceID, 32768),
+	"Bypass_policies_when_pushing":                    permissions.MakeAccessBit(repoNamespaceID, 128),
+	"Create_repository":                               permissions.MakeAccessBit(repoNamespaceID, 256),
+	"Delete_or_disable_repository":                    permissions.MakeAccessBit(repoNamespaceID, 512),
+	"Rename_repository":                               permissions.MakeAccessBit(repoNamespaceID, 1024),
+	"Edit_policies":                                   permissions.MakeAccessBit(repoNamespaceID, 2048),
+	"Remove_others_locks":                             permissions.MakeAccessBit(repoNamespaceID, 4096),
+	"Manage_permissions":                              permissions.MakeAccessBit(repoNamespaceID, 8192),
+	"Contribute_to_pull_requests":                     permissions.MakeAccessBit(repoNamespaceID, 16384),
+}
+
+// fileSizePolicyTypeID is the fixed Azure DevOps policy type for file size restriction.
+const fileSizePolicyTypeID = "2e26e725-8201-4edd-8bf5-978563c34a80"
+
+// AzureRepositoryService implements RepositoryService using the confirmed public REST APIs.
+type AzureRepositoryService struct {
+	projects    *azure.Adapter
+	securityACL *azure.Adapter
+	policy      *azure.Adapter
+}
+
+func NewAzureRepositoryService(services azure.Services) *AzureRepositoryService {
+	return &AzureRepositoryService{
+		projects:    services.Projects,
+		securityACL: services.SecurityACL,
+		policy:      services.Policy,
+	}
+}
+
+// resolveProjectID fetches the project GUID for a given project name.
+func (s *AzureRepositoryService) resolveProjectID(ctx context.Context, project string) (string, error) {
+	var response struct {
+		Value []struct {
+			ID   string `json:"id"`
+			Name string `json:"name"`
+		} `json:"value"`
+	}
+	if err := s.projects.Do(ctx, azure.Request{Path: "", APIVersion: "7.0"}, &response); err != nil {
+		return "", fmt.Errorf("list projects: %w", err)
+	}
+	for _, p := range response.Value {
+		if strings.EqualFold(p.Name, project) {
+			return p.ID, nil
+		}
+	}
+	return "", fmt.Errorf("project %q not found", project)
+}
+
+// ReadRepositoryState reads current repository ACL and file size policy.
+func (s *AzureRepositoryService) ReadRepositoryState(ctx context.Context, project string) (RepositoryState, error) {
+	projectID, err := s.resolveProjectID(ctx, project)
+	if err != nil {
+		return RepositoryState{}, err
+	}
+
+	// Read current file size policy (all-repo scope).
+	currentFileSize := ""
+	if s.policy != nil {
+		type policyConfig struct {
+			Type struct {
+				ID string `json:"id"`
+			} `json:"type"`
+			Settings struct {
+				MaximumGitBlobSizeInBytes int64 `json:"maximumGitBlobSizeInBytes"`
+				Scope                     []struct {
+					RepositoryID *string `json:"repositoryId"`
+				} `json:"scope"`
+			} `json:"settings"`
+		}
+		var listResp struct {
+			Value []policyConfig `json:"value"`
+		}
+		if err := s.policy.Do(ctx, azure.Request{Project: project, Path: "configurations"}, &listResp); err == nil {
+			for _, p := range listResp.Value {
+				if p.Type.ID != fileSizePolicyTypeID {
+					continue
+				}
+				for _, scope := range p.Settings.Scope {
+					if scope.RepositoryID == nil && p.Settings.MaximumGitBlobSizeInBytes > 0 {
+						currentFileSize = formatBytesToFileSize(p.Settings.MaximumGitBlobSizeInBytes)
+						break
+					}
+				}
+				if currentFileSize != "" {
+					break
+				}
+			}
+		}
+	}
+
+	token := "repoV2/" + projectID
+	var aclResponse struct {
+		Value []struct {
+			Token          string `json:"token"`
+			AcesDictionary map[string]struct {
+				Allow int `json:"allow"`
+				Deny  int `json:"deny"`
+			} `json:"acesDictionary"`
+		} `json:"value"`
+	}
+	if err := s.securityACL.Do(ctx, azure.Request{
+		Path:           "accesscontrollists/" + repoNamespaceID,
+		SkipAPIVersion: true,
+		Query:          url.Values{"token": {token}},
+	}, &aclResponse); err != nil {
+		return RepositoryState{}, fmt.Errorf("read repository ACL: %w", err)
+	}
+
+	// Build values map: descriptor → bit → AccessValue
+	values := make(map[string]map[permissions.AccessBit]config.AccessValue)
+	for _, acl := range aclResponse.Value {
+		for descriptor, ace := range acl.AcesDictionary {
+			perDesc := make(map[permissions.AccessBit]config.AccessValue)
+			for _, bit := range repoPermissionBits {
+				raw := int(bit.RawBit())
+				switch {
+				case ace.Deny&raw != 0:
+					perDesc[bit] = config.AccessDeny
+				case ace.Allow&raw != 0:
+					perDesc[bit] = config.AccessAllow
+				default:
+					perDesc[bit] = config.AccessNotSet
+				}
+			}
+			values[descriptor] = perDesc
+		}
+	}
+
+	return RepositoryState{
+		MaximumFileSize: currentFileSize,
+		Access: AccessSnapshot{
+			Bits:   repoPermissionBits,
+			Values: values,
+		},
+	}, nil
+}
+
+// parseFileSizeToBytes converts a human-readable size string like "10 MB" to bytes.
+// Supported units: KB, MB, GB (case-insensitive).
+func parseFileSizeToBytes(size string) (int64, error) {
+	size = strings.TrimSpace(size)
+	parts := strings.Fields(size)
+	if len(parts) != 2 {
+		return 0, fmt.Errorf("invalid file size format %q, expected e.g. \"10 MB\"", size)
+	}
+	var value float64
+	if _, err := fmt.Sscanf(parts[0], "%f", &value); err != nil {
+		return 0, fmt.Errorf("invalid file size number %q", parts[0])
+	}
+	switch strings.ToUpper(parts[1]) {
+	case "KB":
+		return int64(value * 1024), nil
+	case "MB":
+		return int64(value * 1024 * 1024), nil
+	case "GB":
+		return int64(value * 1024 * 1024 * 1024), nil
+	default:
+		return 0, fmt.Errorf("unsupported file size unit %q, expected KB, MB, or GB", parts[1])
+	}
+}
+
+// formatBytesToFileSize converts bytes back to a human-readable string matching config format.
+func formatBytesToFileSize(bytes int64) string {
+	switch {
+	case bytes%(1024*1024*1024) == 0:
+		return fmt.Sprintf("%d GB", bytes/(1024*1024*1024))
+	case bytes%(1024*1024) == 0:
+		return fmt.Sprintf("%d MB", bytes/(1024*1024))
+	default:
+		return fmt.Sprintf("%d KB", bytes/1024)
+	}
+}
+
+// SetMaximumFileSize upserts the project-wide file size restriction policy.
+func (s *AzureRepositoryService) SetMaximumFileSize(ctx context.Context, project, size string) error {
+	if s.policy == nil {
+		return fmt.Errorf("policy adapter is required")
+	}
+	bytes, err := parseFileSizeToBytes(size)
+	if err != nil {
+		return err
+	}
+
+	// Find existing all-repo file size policy (scope repositoryId = null).
+	type policyConfig struct {
+		ID        int  `json:"id"`
+		IsEnabled bool `json:"isEnabled"`
+		IsBlocking bool `json:"isBlocking"`
+		Type      struct {
+			ID string `json:"id"`
+		} `json:"type"`
+		Settings struct {
+			MaximumGitBlobSizeInBytes int64       `json:"maximumGitBlobSizeInBytes"`
+			UseUncompressedSize       bool        `json:"useUncompressedSize"`
+			Scope                     []struct {
+				RepositoryID *string `json:"repositoryId"`
+			} `json:"scope"`
+		} `json:"settings"`
+	}
+	var listResp struct {
+		Value []policyConfig `json:"value"`
+	}
+	if err := s.policy.Do(ctx, azure.Request{Project: project, Path: "configurations"}, &listResp); err != nil {
+		return fmt.Errorf("list policy configurations: %w", err)
+	}
+
+	// Find the all-repo policy (repositoryId == null).
+	existingID := 0
+	for _, p := range listResp.Value {
+		if p.Type.ID != fileSizePolicyTypeID {
+			continue
+		}
+		for _, scope := range p.Settings.Scope {
+			if scope.RepositoryID == nil {
+				existingID = p.ID
+				break
+			}
+		}
+		if existingID != 0 {
+			break
+		}
+	}
+
+	body := map[string]any{
+		"isEnabled":  true,
+		"isBlocking": true,
+		"type":       map[string]string{"id": fileSizePolicyTypeID},
+		"settings": map[string]any{
+			"maximumGitBlobSizeInBytes": bytes,
+			"useUncompressedSize":       false,
+			"scope":                     []map[string]any{{"repositoryId": nil}},
+		},
+	}
+
+	if existingID != 0 {
+		// Update existing policy via PUT.
+		return s.policy.Do(ctx, azure.Request{
+			Project: project,
+			Method:  http.MethodPut,
+			Path:    fmt.Sprintf("configurations/%d", existingID),
+			Body:    body,
+		}, nil)
+	}
+	// Create new policy via POST.
+	return s.policy.Do(ctx, azure.Request{
+		Project: project,
+		Method:  http.MethodPost,
+		Path:    "configurations",
+		Body:    body,
+	}, nil)
+}
+
+// SetRepositoryAccess writes ACEs using POST /_apis/AccessControlEntries/{namespaceId}.
+func (s *AzureRepositoryService) SetRepositoryAccess(ctx context.Context, project string, changes []permissions.AccessChange) error {
+	projectID, err := s.resolveProjectID(ctx, project)
+	if err != nil {
+		return err
+	}
+	token := "repoV2/" + projectID
+
+	// Group changes by descriptor so we merge allow/deny bits per group in one call.
+	type ace struct{ allow, deny int }
+	byDescriptor := make(map[string]*ace)
+	for _, change := range changes {
+		a := byDescriptor[change.Principal.Descriptor]
+		if a == nil {
+			a = &ace{}
+			byDescriptor[change.Principal.Descriptor] = a
+		}
+		raw := int(change.Bit.RawBit())
+		// Clear the bit first, then set according to desired value.
+		a.allow &^= raw
+		a.deny &^= raw
+		switch change.Desired {
+		case config.AccessAllow:
+			a.allow |= raw
+		case config.AccessDeny:
+			a.deny |= raw
+		}
+	}
+
+	type aceEntry struct {
+		Descriptor   string `json:"descriptor"`
+		Allow        int    `json:"allow"`
+		Deny         int    `json:"deny"`
+		ExtendedInfo struct {
+			EffectiveAllow int `json:"effectiveAllow"`
+			EffectiveDeny  int `json:"effectiveDeny"`
+			InheritedAllow int `json:"inheritedAllow"`
+			InheritedDeny  int `json:"inheritedDeny"`
+		} `json:"extendedInfo"`
+	}
+	type aclPayload struct {
+		Token               string     `json:"token"`
+		Merge               bool       `json:"merge"`
+		AccessControlEntries []aceEntry `json:"accessControlEntries"`
+	}
+
+	// Build one entry per descriptor and POST in a single request.
+	entries := make([]aceEntry, 0, len(byDescriptor))
+	for descriptor, a := range byDescriptor {
+		e := aceEntry{Descriptor: descriptor, Allow: a.allow, Deny: a.deny}
+		e.ExtendedInfo.EffectiveAllow = a.allow
+		e.ExtendedInfo.EffectiveDeny = a.deny
+		e.ExtendedInfo.InheritedAllow = a.allow
+		e.ExtendedInfo.InheritedDeny = a.deny
+		entries = append(entries, e)
+	}
+
+	payload := aclPayload{Token: token, Merge: true, AccessControlEntries: entries}
+	if err := s.securityACL.Do(ctx, azure.Request{
+		Path:           "AccessControlEntries/" + repoNamespaceID,
+		Method:         http.MethodPost,
+		SkipAPIVersion: true,
+		Body:           payload,
+	}, nil); err != nil {
+		return fmt.Errorf("set repository permissions: %w", err)
+	}
+	return nil
+}

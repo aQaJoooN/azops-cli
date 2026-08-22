@@ -17,7 +17,7 @@ func applicationDependencies(services azure.Services) detector.Dependencies {
 	return detector.Dependencies{
 		GroupDirectory:     directory,
 		Security:           projectsettings.NewAzureSecurityService(services, directory),
-		Repositories:       unsupported,
+		Repositories:       projectsettings.NewAzureRepositoryService(services),
 		Dashboards:         unsupported,
 		AgentPools:         unsupported,
 		Release:            unsupported,
