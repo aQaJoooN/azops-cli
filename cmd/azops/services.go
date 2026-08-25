@@ -19,7 +19,7 @@ func applicationDependencies(services azure.Services) detector.Dependencies {
 		Security:           projectsettings.NewAzureSecurityService(services, directory),
 		Repositories:       projectsettings.NewAzureRepositoryService(services),
 		Dashboards:         unsupported,
-		AgentPools:         unsupported,
+		AgentPools:         projectsettings.NewAzureAgentPoolService(services, directory),
 		Release:            unsupported,
 		ServiceConnections: unsupported,
 		Test:               unsupported,
@@ -35,30 +35,13 @@ func applicationDependencies(services azure.Services) detector.Dependencies {
 	}
 }
 
-// unsupportedServices keeps every registered module safe to invoke while an
-// Azure DevOps Server capability lacks a verified public REST implementation.
 type unsupportedServices struct{}
 
-func (unsupportedServices) ReadRepositoryState(context.Context, string) (projectsettings.RepositoryState, error) {
-	return projectsettings.RepositoryState{}, azure.Unsupported(azure.Build, "read repository state")
-}
-func (unsupportedServices) SetMaximumFileSize(context.Context, string, string) error {
-	return azure.Unsupported(azure.Build, "set repository maximum file size")
-}
-func (unsupportedServices) SetRepositoryAccess(context.Context, string, []permissions.AccessChange) error {
-	return azure.Unsupported(azure.Security, "set repository permissions")
-}
 func (unsupportedServices) ReadDashboardSecurity(context.Context, string) (config.DashboardSecurity, error) {
 	return config.DashboardSecurity{}, azure.Unsupported(azure.Dashboards, "read dashboard security")
 }
 func (unsupportedServices) SetDashboardSecurity(context.Context, string, config.DashboardSecurity) error {
 	return azure.Unsupported(azure.Dashboards, "set dashboard security")
-}
-func (unsupportedServices) ReadAgentPoolRoles(context.Context, string, string) (map[string]config.Role, error) {
-	return nil, azure.Unsupported(azure.DistributedTask, "read agent pool roles")
-}
-func (unsupportedServices) SetAgentPoolRoles(context.Context, string, string, []permissions.RoleChange) error {
-	return azure.Unsupported(azure.DistributedTask, "set agent pool roles")
 }
 func (unsupportedServices) ReadReleaseRetention(context.Context, string) (config.ReleaseRetentionConfig, error) {
 	return config.ReleaseRetentionConfig{}, azure.Unsupported(azure.Release, "read release retention")

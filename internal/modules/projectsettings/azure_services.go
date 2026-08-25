@@ -18,20 +18,25 @@ type AzureSecurityService struct {
 	groups          permissions.GroupDirectory
 	projectIdentity *azure.Adapter
 	projectSecurity *azure.Adapter
-	security        *azure.Adapter
-	// permInfo caches the full display permission metadata per project, keyed by
-	// normalized permission name. Used by SetProjectAccess to find the right token/namespaceId.
 	permInfo map[string]map[string]displayPermission // project → normalizedName → displayPermission
 }
 
 func NewAzureSecurityService(services azure.Services, groups permissions.GroupDirectory) *AzureSecurityService {
-	return &AzureSecurityService{groups: groups, projectIdentity: services.ProjectIdentity, projectSecurity: services.ProjectSecurity, security: services.Security, permInfo: make(map[string]map[string]displayPermission)}
+	return &AzureSecurityService{groups: groups, projectIdentity: services.ProjectIdentity, projectSecurity: services.ProjectSecurity, permInfo: make(map[string]map[string]displayPermission)}
 }
 func (s *AzureSecurityService) ListGroups(ctx context.Context, project string) ([]permissions.Group, error) {
 	if s == nil || s.groups == nil {
 		return nil, fmt.Errorf("Azure security group directory is required")
 	}
 	return s.groups.ListGroups(ctx, project)
+}
+func (s *AzureSecurityService) Invalidate(project string) {
+	if s == nil || s.groups == nil {
+		return
+	}
+	if inv, ok := s.groups.(permissions.GroupCacheInvalidator); ok {
+		inv.Invalidate(project)
+	}
 }
 func (s *AzureSecurityService) CreateGroup(ctx context.Context, project, name string) (permissions.Group, error) {
 	if s == nil || s.projectIdentity == nil {

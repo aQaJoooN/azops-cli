@@ -29,13 +29,11 @@ var (
 	Graph            = Service{"graph", CollectionScope, []string{"_apis", "graph"}, "7.0-preview.1"}
 	Security         = Service{"security", CollectionScope, []string{"_apis", "securitynamespaces"}, "7.0"}
 	SecurityACL      = Service{"security acl", CollectionScope, []string{"_apis"}, "7.0"}
-	// SecurityACL uses SkipAPIVersion:true on requests — the accesscontrollists/accesscontrolientries
-	// endpoints on Azure DevOps Server 2022.2 do not accept an api-version query parameter.
 	Build            = Service{"build", ProjectScope, []string{"_apis", "build"}, "7.0"}
 	Release          = Service{"release", ProjectScope, []string{"_apis", "release"}, "7.0"}
 	DistributedTask  = Service{"distributedtask", ProjectScope, []string{"_apis", "distributedtask"}, "7.0"}
-	AgentPools       = Service{"agent pools", CollectionScope, []string{"_apis", "distributedtask"}, "7.0"}
 	ServiceHooks     = Service{"hooks", CollectionScope, []string{"_apis", "hooks"}, "7.0"}
+	SecurityRoles    = Service{"securityroles", CollectionScope, []string{"_apis", "securityroles"}, "5.0-preview.1"}
 	Dashboards       = Service{"dashboard", ProjectScope, []string{"_apis", "dashboard"}, "7.0-preview.3"}
 	ServiceEndpoints = Service{"serviceendpoint", ProjectScope, []string{"_apis", "serviceendpoint"}, "7.0"}
 	Policy           = Service{"policy", ProjectScope, []string{"_apis", "policy"}, "7.1"}
@@ -80,10 +78,10 @@ type Services struct {
 	Graph            *Adapter
 	Security         *Adapter
 	SecurityACL      *Adapter
+	SecurityRoles    *Adapter
 	Build            *Adapter
 	Release          *Adapter
 	DistributedTask  *Adapter
-	AgentPools       *Adapter
 	ServiceHooks     *Adapter
 	Dashboards       *Adapter
 	ServiceEndpoints *Adapter
@@ -93,15 +91,21 @@ type Services struct {
 
 func NewServices(client *Client) Services {
 	return Services{
-		Projects: NewAdapter(client, Projects), Identity: NewAdapter(client, Identity),
-		ProjectIdentity: NewAdapter(client, ProjectIdentity), ProjectSecurity: NewAdapter(client, ProjectSecurity),
-		Graph: NewAdapter(client, Graph),
-		Security: NewAdapter(client, Security), SecurityACL: NewAdapter(client, SecurityACL),
-		Build:   NewAdapter(client, Build),
-		Release: NewAdapter(client, Release), DistributedTask: NewAdapter(client, DistributedTask),
-		AgentPools: NewAdapter(client, AgentPools), ServiceHooks: NewAdapter(client, ServiceHooks),
-		Dashboards: NewAdapter(client, Dashboards), ServiceEndpoints: NewAdapter(client, ServiceEndpoints),
-		Policy: NewAdapter(client, Policy),
-		Test:   NewAdapter(client, Test),
+		Projects:        NewAdapter(client, Projects),
+		Identity:        NewAdapter(client, Identity),
+		ProjectIdentity: NewAdapter(client, ProjectIdentity),
+		ProjectSecurity: NewAdapter(client, ProjectSecurity),
+		Graph:           NewAdapter(client, Graph),
+		Security:        NewAdapter(client, Security),
+		SecurityACL:     NewAdapter(client, SecurityACL),
+		SecurityRoles:   NewAdapter(client, SecurityRoles),
+		Build:           NewAdapter(client, Build),
+		Release:         NewAdapter(client, Release),
+		DistributedTask: NewAdapter(client, DistributedTask),
+		ServiceHooks:    NewAdapter(client, ServiceHooks),
+		Dashboards:      NewAdapter(client, Dashboards),
+		ServiceEndpoints: NewAdapter(client, ServiceEndpoints),
+		Policy:          NewAdapter(client, Policy),
+		Test:            NewAdapter(client, Test),
 	}
 }

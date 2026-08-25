@@ -17,6 +17,7 @@ type Principal struct {
 	Alias      config.GroupSelector
 	Name       string
 	Descriptor string
+	TFID       string // TeamFoundationId GUID for internal identity API calls
 }
 
 // Resolver expands configured aliases and caches directory results for one run.
@@ -94,7 +95,7 @@ func (resolver *Resolver) Resolve(ctx context.Context, selectors []config.GroupS
 	principals := make(map[string]Principal)
 	add := func(alias config.GroupSelector, group Group) {
 		if _, exists := principals[group.Descriptor]; !exists {
-			principals[group.Descriptor] = Principal{Alias: alias, Name: group.Name, Descriptor: group.Descriptor}
+			principals[group.Descriptor] = Principal{Alias: alias, Name: group.Name, Descriptor: group.Descriptor, TFID: group.TFID}
 		}
 	}
 	for _, selector := range selectors {

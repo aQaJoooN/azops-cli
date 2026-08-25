@@ -105,7 +105,7 @@ func (module *securityModule) planGroups(general config.GeneralConfig, create bo
 				group = permissions.Group{Name: name, Descriptor: "pending:" + name}
 				operations = append(operations, domain.Operation{Kind: domain.OperationCreate, Resource: name, Summary: "create project group " + name, Payload: createGroupPayload{Project: general.TeamProjectName, Name: name}})
 			}
-			principal := permissions.Principal{Alias: alias, Name: name, Descriptor: group.Descriptor}
+			principal := permissions.Principal{Alias: alias, Name: name, Descriptor: group.Descriptor, TFID: group.TFID}
 			principals[alias] = []permissions.Principal{principal}
 			all[group.Descriptor] = principal
 		}
@@ -138,6 +138,7 @@ func (module *securityModule) Apply(ctx context.Context, plan domain.Plan) (doma
 		return result, moduleError(module, "apply plan", fmt.Errorf("plan belongs to %s", plan.Module))
 	}
 	created := make(map[string]permissions.Group)
+	groupsCreated := false
 	for _, operation := range plan.Operations {
 		switch payload := operation.Payload.(type) {
 		case createGroupPayload:
@@ -146,6 +147,7 @@ func (module *securityModule) Apply(ctx context.Context, plan domain.Plan) (doma
 				return result, moduleError(module, "create group "+payload.Name, err)
 			}
 			created["pending:"+payload.Name] = group
+			groupsCreated = true
 		case accessPayload:
 			changes := append([]permissions.AccessChange(nil), payload.Changes...)
 			for index := range changes {
@@ -160,6 +162,17 @@ func (module *securityModule) Apply(ctx context.Context, plan domain.Plan) (doma
 			return result, moduleError(module, "apply plan", fmt.Errorf("unsupported security operation payload"))
 		}
 		result.Changes = append(result.Changes, domain.ChangeSummary{Kind: operation.Kind, Resource: operation.Resource, Summary: operation.Summary})
+	}
+	if groupsCreated {
+		projects := make(map[string]struct{})
+		for _, op := range plan.Operations {
+			if p, ok := op.Payload.(createGroupPayload); ok {
+				projects[p.Project] = struct{}{}
+			}
+		}
+		for project := range projects {
+			module.service.Invalidate(project)
+		}
 	}
 	return result, nil
 }

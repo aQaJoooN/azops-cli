@@ -16,6 +16,11 @@ type Group struct {
 	TFID       string // TeamFoundationId GUID, used for internal identity API calls
 }
 
+// GroupCacheInvalidator can be implemented by a GroupDirectory that supports cache invalidation.
+type GroupCacheInvalidator interface {
+	Invalidate(project string)
+}
+
 // GroupDirectory lists Azure DevOps groups visible to one project.
 type GroupDirectory interface {
 	ListGroups(context.Context, string) ([]Group, error)
@@ -84,6 +89,16 @@ type CachedGroupDirectory struct {
 
 func NewCachedGroupDirectory(source GroupDirectory) *CachedGroupDirectory {
 	return &CachedGroupDirectory{source: source, cache: make(map[string]*cachedGroups)}
+}
+
+// Invalidate clears the cached group list for a project so the next call re-fetches.
+func (directory *CachedGroupDirectory) Invalidate(project string) {
+	if directory == nil {
+		return
+	}
+	directory.mu.Lock()
+	delete(directory.cache, project)
+	directory.mu.Unlock()
 }
 
 func (directory *CachedGroupDirectory) ListGroups(ctx context.Context, project string) ([]Group, error) {

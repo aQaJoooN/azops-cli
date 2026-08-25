@@ -296,14 +296,17 @@ digraph azops_cli {
         style=filled color="#FCE4EC" fontcolor="#880E4F" fontsize=11
         node [fillcolor="#F8BBD0" color="#C2185B"]
 
-        azSecImpl  [label="AzureSecurityService\nNewAzureSecurityService(services, dir)"]
-        azHookImpl [label="AzureServiceHookService\nNewAzureServiceHookService(services)"]
+        azSecImpl   [label="AzureSecurityService\nNewAzureSecurityService(services, dir)"]
+        azHookImpl  [label="AzureServiceHookService\nNewAzureServiceHookService(services)"]
+        azAgentImpl [label="AzureAgentPoolService\nNewAzureAgentPoolService(services)"]
     }
 
-    azServices -> azSecImpl  [label="uses adapters"]
-    azServices -> azHookImpl [label="uses adapters"]
-    azSecImpl  -> psSecSvc   [style=dashed label="implements"]
-    azHookImpl -> psSvcHSvc  [style=dashed label="implements"]
+    azServices -> azSecImpl   [label="uses adapters"]
+    azServices -> azHookImpl  [label="uses adapters"]
+    azServices -> azAgentImpl [label="uses adapters"]
+    azSecImpl   -> psSecSvc   [style=dashed label="implements"]
+    azHookImpl  -> psSvcHSvc  [style=dashed label="implements"]
+    azAgentImpl -> psAgentSvc [style=dashed label="implements"]
 
     // ─── Error types used across layers ───────────────────────────────────────
     domErrors -> run      [style=dashed color="#999999" label="bubbles to"]
