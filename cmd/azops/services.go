@@ -24,7 +24,7 @@ func applicationDependencies(services azure.Services) detector.Dependencies {
 		ServiceConnections: unsupported,
 		Test:               unsupported,
 		ServiceHook:        projectsettings.NewAzureServiceHookService(services),
-		Settings:           projectsettings.UnsupportedSettingsService{},
+		Settings:           projectsettings.NewAzureSettingsService(services),
 		Overview:           projectsettings.UnsupportedOverviewService{},
 		Environments:       unsupported,
 		Library:            unsupported,

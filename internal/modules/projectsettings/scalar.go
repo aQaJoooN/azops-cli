@@ -78,7 +78,9 @@ func (m *scalarModule) Plan(ctx context.Context, input domain.ModuleInput) (doma
 		if !ok || service == nil {
 			return plan, moduleError(m, "read current state", fmt.Errorf("settings service is required"))
 		}
-		desired = *cfg.ProjectSettings.Settings
+		normalized := *cfg.ProjectSettings.Settings
+		normalized.RetentionPolicy = config.RetentionPolicySettings{}
+		desired = normalized
 		current, err = service.ReadPipelineSettings(ctx, cfg.General.TeamProjectName)
 	case scalarOverview:
 		if cfg.ProjectSettings.Overview == nil {

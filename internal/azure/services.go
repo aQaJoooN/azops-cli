@@ -29,7 +29,8 @@ var (
 	Graph            = Service{"graph", CollectionScope, []string{"_apis", "graph"}, "7.0-preview.1"}
 	Security         = Service{"security", CollectionScope, []string{"_apis", "securitynamespaces"}, "7.0"}
 	SecurityACL      = Service{"security acl", CollectionScope, []string{"_apis"}, "7.0"}
-	Build            = Service{"build", ProjectScope, []string{"_apis", "build"}, "7.0"}
+	Build            = Service{"build", ProjectScope, []string{"_apis", "build"}, "7.1"}
+	BuildRetention   = Service{"build retention", ProjectScope, []string{"_apis", "build", "retention"}, "7.0"}
 	Release          = Service{"release", ProjectScope, []string{"_apis", "release"}, "7.0"}
 	DistributedTask  = Service{"distributedtask", ProjectScope, []string{"_apis", "distributedtask"}, "7.0"}
 	ServiceHooks     = Service{"hooks", CollectionScope, []string{"_apis", "hooks"}, "7.0"}
@@ -80,6 +81,7 @@ type Services struct {
 	SecurityACL      *Adapter
 	SecurityRoles    *Adapter
 	Build            *Adapter
+	BuildRetention   *Adapter
 	Release          *Adapter
 	DistributedTask  *Adapter
 	ServiceHooks     *Adapter
@@ -91,21 +93,22 @@ type Services struct {
 
 func NewServices(client *Client) Services {
 	return Services{
-		Projects:        NewAdapter(client, Projects),
-		Identity:        NewAdapter(client, Identity),
-		ProjectIdentity: NewAdapter(client, ProjectIdentity),
-		ProjectSecurity: NewAdapter(client, ProjectSecurity),
-		Graph:           NewAdapter(client, Graph),
-		Security:        NewAdapter(client, Security),
-		SecurityACL:     NewAdapter(client, SecurityACL),
-		SecurityRoles:   NewAdapter(client, SecurityRoles),
-		Build:           NewAdapter(client, Build),
-		Release:         NewAdapter(client, Release),
-		DistributedTask: NewAdapter(client, DistributedTask),
-		ServiceHooks:    NewAdapter(client, ServiceHooks),
-		Dashboards:      NewAdapter(client, Dashboards),
+		Projects:         NewAdapter(client, Projects),
+		Identity:         NewAdapter(client, Identity),
+		ProjectIdentity:  NewAdapter(client, ProjectIdentity),
+		ProjectSecurity:  NewAdapter(client, ProjectSecurity),
+		Graph:            NewAdapter(client, Graph),
+		Security:         NewAdapter(client, Security),
+		SecurityACL:      NewAdapter(client, SecurityACL),
+		SecurityRoles:    NewAdapter(client, SecurityRoles),
+		Build:            NewAdapter(client, Build),
+		BuildRetention:   NewAdapter(client, BuildRetention),
+		Release:          NewAdapter(client, Release),
+		DistributedTask:  NewAdapter(client, DistributedTask),
+		ServiceHooks:     NewAdapter(client, ServiceHooks),
+		Dashboards:       NewAdapter(client, Dashboards),
 		ServiceEndpoints: NewAdapter(client, ServiceEndpoints),
-		Policy:          NewAdapter(client, Policy),
-		Test:            NewAdapter(client, Test),
+		Policy:           NewAdapter(client, Policy),
+		Test:             NewAdapter(client, Test),
 	}
 }

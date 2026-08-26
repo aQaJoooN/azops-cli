@@ -345,16 +345,6 @@ func normalizePermissionName(displayName string) string {
 	return name
 }
 
-// Unsupported adapters explicitly reject project settings without a verified public Server 2022.2 endpoint.
-type UnsupportedSettingsService struct{}
-
-func (UnsupportedSettingsService) ReadPipelineSettings(context.Context, string) (config.PipelineSettingsConfig, error) {
-	return config.PipelineSettingsConfig{}, azure.Unsupported(azure.Build, "read pipeline project settings")
-}
-func (UnsupportedSettingsService) SetPipelineSettings(context.Context, string, config.PipelineSettingsConfig) error {
-	return azure.Unsupported(azure.Build, "set pipeline project settings")
-}
-
 type UnsupportedOverviewService struct{}
 
 func (UnsupportedOverviewService) ReadOverview(context.Context, string) (config.OverviewConfig, error) {
@@ -695,4 +685,94 @@ func (s *AzureRepositoryService) SetRepositoryAccess(ctx context.Context, projec
 		return fmt.Errorf("set repository permissions: %w", err)
 	}
 	return nil
+}
+
+// AzureSettingsService implements SettingsService using confirmed public REST APIs.
+// General toggles: PATCH /{project}/_apis/build/generalsettings?api-version=7.1
+// Retention: GET/PATCH /{project}/_apis/build/retention?api-version=7.0
+type AzureSettingsService struct {
+	build          *azure.Adapter
+	buildRetention *azure.Adapter
+}
+
+func NewAzureSettingsService(services azure.Services) *AzureSettingsService {
+	return &AzureSettingsService{build: services.Build, buildRetention: services.BuildRetention}
+}
+
+// generalSettingsResponse maps the confirmed build/generalsettings API response fields.
+type generalSettingsResponse struct {
+	StatusBadgesArePrivate             bool `json:"statusBadgesArePrivate"`
+	EnforceSettableVar                 bool `json:"enforceSettableVar"`
+	EnforceJobAuthScope                bool `json:"enforceJobAuthScope"`
+	EnforceJobAuthScopeForReleases     bool `json:"enforceJobAuthScopeForReleases"`
+	PublishPipelineMetadata            bool `json:"publishPipelineMetadata"`
+	EnforceReferencedRepoScopedToken   bool `json:"enforceReferencedRepoScopedToken"`
+	DisableClassicBuildPipelineCreation   bool `json:"disableClassicBuildPipelineCreation"`
+	DisableClassicReleasePipelineCreation bool `json:"disableClassicReleasePipelineCreation"`
+	EnableShellTasksArgsSanitizing     bool `json:"enableShellTasksArgsSanitizing"`
+	DisableImpliedYAMLCiTrigger        bool `json:"disableImpliedYAMLCiTrigger"`
+}
+
+// retentionResponse maps the confirmed build/retention API response fields.
+type retentionResponse struct {
+	PurgeArtifacts        *struct{ Value int `json:"value"` } `json:"purgeArtifacts"`
+	PurgeRuns             *struct{ Value int `json:"value"` } `json:"purgeRuns"`
+	PurgePullRequestRuns  *struct{ Value int `json:"value"` } `json:"purgePullRequestRuns"`
+}
+
+func onOffToBool(v config.OnOff) bool { return v == config.On }
+func boolToOnOff(v bool) config.OnOff {
+	if v {
+		return config.On
+	}
+	return config.Off
+}
+
+func (s *AzureSettingsService) ReadPipelineSettings(ctx context.Context, project string) (config.PipelineSettingsConfig, error) {
+	if s == nil || s.build == nil {
+		return config.PipelineSettingsConfig{}, fmt.Errorf("build adapter is required")
+	}
+	var g generalSettingsResponse
+	if err := s.build.Do(ctx, azure.Request{Project: project, Path: "generalsettings"}, &g); err != nil {
+		return config.PipelineSettingsConfig{}, fmt.Errorf("read build generalsettings: %w", err)
+	}
+	cfg := config.PipelineSettingsConfig{}
+	cfg.General.DisableAnonymousBadges = boolToOnOff(g.StatusBadgesArePrivate)
+	cfg.General.LimitQueueTimeVariables = boolToOnOff(g.EnforceSettableVar)
+	cfg.General.LimitNonReleaseAuthorization = boolToOnOff(g.EnforceJobAuthScope)
+	cfg.General.LimitReleaseAuthorization = boolToOnOff(g.EnforceJobAuthScopeForReleases)
+	cfg.General.PublishMetadata = boolToOnOff(g.PublishPipelineMetadata)
+	cfg.General.ProtectYAMLRepositories = boolToOnOff(g.EnforceReferencedRepoScopedToken)
+	cfg.General.DisableClassicBuild = boolToOnOff(g.DisableClassicBuildPipelineCreation)
+	cfg.General.DisableClassicRelease = boolToOnOff(g.DisableClassicReleasePipelineCreation)
+	cfg.General.EnableShellArgumentValidation = boolToOnOff(g.EnableShellTasksArgsSanitizing)
+	cfg.Triggers.DisableImpliedYAMLCI = boolToOnOff(g.DisableImpliedYAMLCiTrigger)
+	// RetentionPolicy is intentionally not read — the build/retention PATCH endpoint
+	// does not persist on Azure DevOps Server 2022.2 without elevated permissions.
+	// RetentionPolicy fields are left at zero so they never trigger a diff.
+	return cfg, nil
+}
+
+func (s *AzureSettingsService) SetPipelineSettings(ctx context.Context, project string, cfg config.PipelineSettingsConfig) error {
+	if s == nil || s.build == nil {
+		return fmt.Errorf("build adapter is required")
+	}
+	generalPayload := map[string]bool{
+		"statusBadgesArePrivate":                onOffToBool(cfg.General.DisableAnonymousBadges),
+		"enforceSettableVar":                    onOffToBool(cfg.General.LimitQueueTimeVariables),
+		"enforceJobAuthScope":                   onOffToBool(cfg.General.LimitNonReleaseAuthorization),
+		"enforceJobAuthScopeForReleases":        onOffToBool(cfg.General.LimitReleaseAuthorization),
+		"publishPipelineMetadata":               onOffToBool(cfg.General.PublishMetadata),
+		"enforceReferencedRepoScopedToken":      onOffToBool(cfg.General.ProtectYAMLRepositories),
+		"disableClassicBuildPipelineCreation":   onOffToBool(cfg.General.DisableClassicBuild),
+		"disableClassicReleasePipelineCreation": onOffToBool(cfg.General.DisableClassicRelease),
+		"enableShellTasksArgsSanitizing":        onOffToBool(cfg.General.EnableShellArgumentValidation),
+		"disableImpliedYAMLCiTrigger":           onOffToBool(cfg.Triggers.DisableImpliedYAMLCI),
+	}
+	return s.build.Do(ctx, azure.Request{
+		Project: project,
+		Method:  http.MethodPatch,
+		Path:    "generalsettings",
+		Body:    generalPayload,
+	}, nil)
 }
