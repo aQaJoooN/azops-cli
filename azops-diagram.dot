@@ -74,7 +74,7 @@ digraph azops_cli {
 
         azClient   [label="Client{baseURL, pat, httpClient}\nNewClient()"]
         azAdapter  [label="Adapter{client, service}\nDo(ctx, Request, output)"]
-        azServices [label="Services{Projects, Identity,\nGraph, Security, Build,\nRelease, DistributedTask,\nAgentPools, ServiceHooks,\nDashboards, ServiceEndpoints, Test}\nNewServices()"]
+        azServices [label="Services{Projects, Identity,\nGraph, Security, SecurityACL,\nBuild, Release, DistributedTask,\nAgentPools, ServiceHooks,\nDashboards, ServiceEndpoints, Test}\nNewServices()"]
         azSvcDef   [label="Service{Name, Scope,\nPrefix, APIVersion}\n(13 constants)"]
         azUnsup    [label="Unsupported()\n→ UnsupportedOperationError"]
     }
@@ -162,10 +162,10 @@ digraph azops_cli {
 
         permDir    [label="GroupDirectory interface\nListGroups(ctx, project)"]
         permAzDir  [label="AzureGroupDirectory\nNewAzureGroupDirectory(adapter)"]
-        permCache  [label="CachedGroupDirectory\nNewCachedGroupDirectory(source)\n(sync.Once per project)"]
-        permPlan   [label="PlanAccess(assignments, bits,\nprincipals, current)\n→ []AccessChange"]
+        permCache  [label="CachedGroupDirectory\nNewCachedGroupDirectory(source)\n(sync.Once per project)\nInvalidate(project)"]
+        permPlan   [label="PlanAccess(assignments, bits,\nprincipals, current)\n→ []AccessChange\n\nPlanAccessFull(assignments, bits,\nprincipals)\n→ []AccessChange (all entries,\nregardless of current state)"]
         permRoles  [label="PlanRoles(assignments,\nprincipals, current, supported)\n→ []RoleChange"]
-        permGroup  [label="Group{Name, Descriptor}\nPrincipal{Alias, Name, Descriptor}"]
+        permGroup  [label="Group{Name, Descriptor, TFID}\nPrincipal{Alias, Name, Descriptor, TFID}"]
     }
 
     permDir  -> permAzDir [label="implemented by"]
@@ -230,14 +230,14 @@ digraph azops_cli {
         plLib    [label="libraryModule\nstage 3\nNewLibrary(...)"]
         plTask   [label="taskGroupsModule\nstage 3\nNewTaskGroups(...)"]
         plDeploy [label="deploymentGroupModule\nstage 3\nNewDeploymentGroup(...)"]
-        plPipes  [label="pipelinesModule\nstage 4\nNewPipelines(...)"]
-        plRel    [label="releasesModule\nstage 4\nNewReleases(...)"]
+        plPipes  [label="pipelinesModule (scopedModule)\nstage 4 / NewPipelines(...)\nPlan: PlanAccess (delta) +\n  PlanAccessFull (full ACE set\n  for sub-folders on drift)\nApply: SetScopedAccess(\n  changes, allACEs)"]
+        plRel    [label="releasesModule (scopedModule)\nstage 4 / NewReleases(...)\nPlan: PlanAccess (delta) +\n  PlanAccessFull (full ACE set\n  for sub-folders on drift)\nApply: SetScopedAccess(\n  changes, allACEs)"]
 
         plEnvSvc  [label="EnvironmentService"]
         plLibSvc  [label="LibraryService"]
         plTaskSvc [label="TaskGroupService"]
         plDeplSvc [label="DeploymentGroupService"]
-        plScopSvc [label="ScopedPermissionService"]
+        plScopSvc [label="ScopedPermissionService\nReadScopedAccess(project, path)\n→ AccessSnapshot{\n  Bits, Values,\n  inheritPermissions flag\n}\nSetScopedAccess(project, path,\n  changes, allACEs)"]
     }
 
     plEnv    -> plEnvSvc  [label="uses"]
@@ -251,8 +251,20 @@ digraph azops_cli {
     plLib    -> permRoles [label="PlanRoles()"]
     plTask   -> permPlan  [label="PlanAccess()"]
     plDeploy -> permRoles [label="PlanRoles()"]
-    plPipes  -> permPlan  [label="PlanAccess()"]
-    plRel    -> permPlan  [label="PlanAccess()"]
+    plPipes  -> permPlan  [label="PlanAccess()\nPlanAccessFull()"]
+    plRel    -> permPlan  [label="PlanAccess()\nPlanAccessFull()"]
+
+    // ─── AzurePipelineScopedService ────────────────────────────────────────────
+    subgraph cluster_az_scoped {
+        label="internal/modules/pipelines  (azure_scoped.go)"
+        style=filled color="#FBE9E7" fontcolor="#BF360C" fontsize=13
+        node [fillcolor="#FFCCBC" color="#E64A19"]
+
+        azScoped [label="AzurePipelineScopedService\nNewAzurePipelineScopedService(services)  // build\nNewAzureReleaseScopedService(services)   // release\n\nresolveProjectID(project) → GUID\nensureBuildFolder(project, path)   PUT build/folders?path=\\Dev\nensureReleaseFolder(project, path) POST release/folders?path=\\Dev\n\nReadScopedAccess(project, path):\n  GET accesscontrollists/{ns}?token=…&recurse=false\n  sub-folder: if inheritPermissions=true → treat as empty\n  → AccessSnapshot{Bits, Values}\n\nSetScopedAccess(project, path, changes, allACEs):\n  root  /  → POST AccessControlEntries/{ns}  merge:true\n  sub-folder → POST accesscontrollists/{ns}\n                {value:[{token, inheritPermissions:false,\n                 acesDictionary:{…only Allow/Deny…}}]}\n\nbootstrapReleaseDataspace(project):\n  1. POST release/folders?path=\\\n  2. fallback: POST release/definitions (temp pipeline)\n     then DELETE\n\nisDataspaceError(err) → bool\nbuildToken / releaseToken → ACL token string"]
+    }
+
+    azScoped -> plScopSvc [style=dashed label="implements"]
+    azScoped -> azServices [label="uses Projects,\nSecurityACL,\nBuild, Release"]
 
     // ─── Domain interface wiring ───────────────────────────────────────────────
     psSecurity -> domModule [style=dashed label="implements"]

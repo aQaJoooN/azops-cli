@@ -84,9 +84,10 @@ func (module *scopedModule) Plan(ctx context.Context, input domain.ModuleInput) 
 		}
 		if len(changes) > 0 {
 			plan.Operations = append(plan.Operations, domain.Operation{
-				Kind: domain.OperationPermission, Resource: scope,
-				Summary: fmt.Sprintf("set %d %s permission assignment(s) at %s", len(changes), module.label, scope),
-				Payload: scopedAccessPayload{Project: cfg.General.TeamProjectName, Path: scope, Changes: changes},
+				Kind:     domain.OperationPermission,
+				Resource: scope,
+				Summary:  fmt.Sprintf("set %d %s permission assignment(s) at %s", len(changes), module.label, scope),
+				Payload:  scopedAccessPayload{Project: cfg.General.TeamProjectName, Path: scope, Changes: changes},
 			})
 		}
 	}
@@ -100,7 +101,7 @@ func (module *scopedModule) Apply(ctx context.Context, plan domain.Plan) (domain
 		if !ok {
 			return result, moduleError(module, "apply plan", fmt.Errorf("unsupported scoped permission operation payload"))
 		}
-		if err := module.service.SetScopedAccess(ctx, payload.Project, payload.Path, payload.Changes); err != nil {
+		if err := module.service.SetScopedAccess(ctx, payload.Project, payload.Path, payload.Changes, nil); err != nil {
 			return result, moduleError(module, "set "+module.label+" permissions for "+payload.Path, err)
 		}
 		result.Changes = append(result.Changes, domain.ChangeSummary{Kind: operation.Kind, Resource: operation.Resource, Summary: operation.Summary})

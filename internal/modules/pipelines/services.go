@@ -46,7 +46,11 @@ type DeploymentGroupService interface {
 }
 
 // ScopedPermissionService manages access assignments at canonical root or folder paths.
+// changes contains only the assignments that differ from the current state.
+// allACEs contains the full desired ACE set for every principal in the config
+// (including Not_Set entries); it is non-nil for sub-folder paths and is used
+// to write explicit zero-bit entries so groups cannot inherit from the root.
 type ScopedPermissionService interface {
 	ReadScopedAccess(context.Context, string, string) (AccessSnapshot, error)
-	SetScopedAccess(context.Context, string, string, []permissions.AccessChange) error
+	SetScopedAccess(ctx context.Context, project, path string, changes []permissions.AccessChange, allACEs []permissions.AccessChange) error
 }

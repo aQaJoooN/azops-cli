@@ -298,9 +298,9 @@ projectsettings: # refer to Team Project Settings
             - "42"
   settings: # refer to Settings in Pipelines in Team Project Settings
     Retention_policy:
-      Days_to_keep_artifacts_symbols_and_attachments: 20
-      Days_to_keep_runs: 731
-      Days_to_keep_pull_request_runs: 20
+      Days_to_keep_artifacts_symbols_and_attachments: 365
+      Days_to_keep_runs: 365
+      Days_to_keep_pull_request_runs: 30
       Number_of_recent_runs_to_retain_per_pipeline: 5
     General:
       Disable_anonymous_access_to_badges: "on"
@@ -314,16 +314,16 @@ projectsettings: # refer to Team Project Settings
       Enable_shell_tasks_arguments_validation: "off"
     Triggers:
       Disable_implied_YAML_CI_trigger: "off"
-  release: # refer to Release Retention in Pipelines in Team Project Settings
+  release: # refer to Release Retention in Pipelines in Team Project Settings (unsupported)
     Maximum_retention_policy:
-      Days_to_retain_a_release: 20
-      Minimum_releases_to_keep: 3
+      Days_to_retain_a_release: 365
+      Minimum_releases_to_keep: 25
     Default_retention_policy:
-      Days_to_retain_a_release: 20
+      Days_to_retain_a_release: 30
       Minimum_releases_to_keep: 3
       Retain_build: true
     Permanently_destroy_releases:
-      Days_to_keep_releases_after_deletion: 731
+      Days_to_keep_releases_after_deletion: 14
   serviceconnections: # refer to Service Connections in Pipelines in Team Project Settings
     create: # shows what service connections should be created by secret
       - "Docker Repository"
@@ -350,14 +350,14 @@ projectsettings: # refer to Team Project Settings
         - "43"
       Reader:
         - "14"
-  test: # refer to Test Retention in Test in Team Project Settings
+  test: # refer to Test Retention in Test in Team Project Settings (unsupported)
     Retention:
       Days_to_keep_automated_test_runs_results_and_attachments_when_not_associated_with_pipeline: 20
       Days_to_keep_manual_test_runs_results_and_attachments: 20
 pipelines: # refer to Pipelines
   pipelines: # refer to Pipelines in Pipelines
     permissions:
-      - path: "root" # permission for / path in pipelines
+      - path: "/" # permission for / path in pipelines
         permission:
           Administer_build_permissions:
             Allow:
@@ -559,7 +559,7 @@ pipelines: # refer to Pipelines
             Not_Set:
               - "14"
               - "43"
-      - path: "Dev" # permission for /Dev path in pipelines
+      - path: "/Dev" # permission for /Dev path in pipelines
         permission:
           Administer_build_permissions:
             Not_Set:
@@ -705,7 +705,7 @@ pipelines: # refer to Pipelines
               - "33"
               - "42"
               - "43"
-      - path: "SRE" # permission for /SRE path in pipelines
+      - path: "/SRE" # permission for /SRE path in pipelines
         permission:
           Administer_build_permissions:
             Not_Set:
@@ -807,7 +807,7 @@ pipelines: # refer to Pipelines
           View_builds:
             Not_Set:
               - "all"
-      - path: "DB" # permission for /DB path in pipelines
+      - path: "/DB" # permission for /DB path in pipelines
         permission:
           Administer_build_permissions:
             Not_Set:
@@ -993,7 +993,7 @@ pipelines: # refer to Pipelines
         - "43"
   releases: # refer to Releases in Pipelines
     permissions:
-      - path: "root" # permission for / path in Releases
+      - path: "/" # permission for / path in Releases
         permission:
           Administer_release_permissions:
             Allow:
@@ -1163,7 +1163,7 @@ pipelines: # refer to Pipelines
             Not_Set:
               - "14"
               - "43"
-      - path: "Dev" # permission for /Dev path in Releases
+      - path: "/Dev" # permission for /Dev path in Releases
         permission:
           Administer_release_permissions:
             Not_Set:
@@ -1311,7 +1311,7 @@ pipelines: # refer to Pipelines
               - "33"
               - "42"
               - "43"
-      - path: "SRE" # permission for /SRE path in Releases
+      - path: "/SRE" # permission for /SRE path in Releases
         permission:
           Administer_release_permissions:
             Not_Set:
@@ -1426,7 +1426,7 @@ pipelines: # refer to Pipelines
           View_releases:
             Not_Set:
               - "all"
-      - path: "DB" # permission for /DB path in Releases
+      - path: "/DB" # permission for /DB path in Releases
         permission:
           Administer_release_permissions:
             Not_Set:

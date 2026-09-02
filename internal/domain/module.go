@@ -43,4 +43,9 @@ type Plan struct {
 	Module     ModuleID
 	Component  ComponentPath
 	Operations []Operation
+	// SkipReason is set when the module is intentionally skipped (e.g. unsupported endpoint).
+	// A non-empty value causes the runner to emit a warning and report OutcomeSkipped.
+	SkipReason string
+	// Warnings are informational messages about partially unsupported configuration.
+	Warnings []string
 }

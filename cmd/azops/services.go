@@ -30,8 +30,8 @@ func applicationDependencies(services azure.Services) detector.Dependencies {
 		Library:            unsupported,
 		TaskGroups:         unsupported,
 		DeploymentGroup:    unsupported,
-		PipelineAccess:     unsupported,
-		ReleaseAccess:      unsupported,
+		PipelineAccess:     pipelines.NewAzurePipelineScopedService(services),
+		ReleaseAccess:      pipelines.NewAzureReleaseScopedService(services),
 	}
 }
 
@@ -102,10 +102,4 @@ func (unsupportedServices) ReadDeploymentGroupRoles(context.Context, string) (ma
 }
 func (unsupportedServices) SetDeploymentGroupRoles(context.Context, string, []permissions.RoleChange) error {
 	return azure.Unsupported(azure.DistributedTask, "set deployment group roles")
-}
-func (unsupportedServices) ReadScopedAccess(context.Context, string, string) (pipelines.AccessSnapshot, error) {
-	return pipelines.AccessSnapshot{}, azure.Unsupported(azure.Security, "read scoped permissions")
-}
-func (unsupportedServices) SetScopedAccess(context.Context, string, string, []permissions.AccessChange) error {
-	return azure.Unsupported(azure.Security, "set scoped permissions")
 }

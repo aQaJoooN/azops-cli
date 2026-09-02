@@ -1,6 +1,9 @@
 package projectsettings
 
 import (
+	"errors"
+
+	"azops-cli/internal/azure"
 	"azops-cli/internal/config"
 	"azops-cli/internal/domain"
 	"context"
@@ -78,10 +81,23 @@ func (m *scalarModule) Plan(ctx context.Context, input domain.ModuleInput) (doma
 		if !ok || service == nil {
 			return plan, moduleError(m, "read current state", fmt.Errorf("settings service is required"))
 		}
-		normalized := *cfg.ProjectSettings.Settings
-		normalized.RetentionPolicy = config.RetentionPolicySettings{}
-		desired = normalized
-		current, err = service.ReadPipelineSettings(ctx, cfg.General.TeamProjectName)
+		desired = *cfg.ProjectSettings.Settings
+		var raw config.PipelineSettingsConfig
+		raw, err = service.ReadPipelineSettings(ctx, cfg.General.TeamProjectName)
+		if err == nil {
+			// Retention fields (Days_to_keep_*) are applied best-effort via build/retention.
+			// A collection-level maximum policy may override project values after writing,
+			// so we exclude them from the idempotency check to avoid a permanent diff loop.
+			// They are still written every time a general-settings change is detected,
+			// and on first apply when general settings also differ.
+			rawCopy := raw
+			rawCopy.RetentionPolicy = cfg.ProjectSettings.Settings.RetentionPolicy
+			rawCopy.RetentionPolicy.RecentRunCount = 0
+			desiredCopy := *cfg.ProjectSettings.Settings
+			desiredCopy.RetentionPolicy.RecentRunCount = 0
+			current = rawCopy
+			desired = desiredCopy
+		}
 	case scalarOverview:
 		if cfg.ProjectSettings.Overview == nil {
 			return plan, moduleError(m, "read desired state", fmt.Errorf("overview configuration is required"))
@@ -96,6 +112,12 @@ func (m *scalarModule) Plan(ctx context.Context, input domain.ModuleInput) (doma
 		return plan, moduleError(m, "read desired state", fmt.Errorf("unsupported scalar module kind"))
 	}
 	if err != nil {
+		// If the service explicitly marks this operation as unsupported, skip gracefully.
+		var unsupported *azure.UnsupportedOperationError
+		if errors.As(err, &unsupported) {
+			plan.SkipReason = unsupported.Error()
+			return plan, nil
+		}
 		return plan, moduleError(m, "read current state", err)
 	}
 	if !reflect.DeepEqual(current, desired) {

@@ -65,6 +65,14 @@ func runModule(ctx context.Context, stage int, module domain.Module, input domai
 		result.Outcome, result.Err = domain.OutcomeFailed, err
 		return result
 	}
+	// Propagate plan warnings into the result.
+	result.Warnings = plan.Warnings
+	// If the module is intentionally skipped, report it without failing.
+	if plan.SkipReason != "" {
+		result.Outcome = domain.OutcomeSkipped
+		result.SkipReason = plan.SkipReason
+		return result
+	}
 	if len(plan.Operations) == 0 {
 		result.Outcome = domain.OutcomeUnchanged
 		return result
@@ -102,5 +110,7 @@ func count(final *domain.FinalResult, outcome domain.Outcome) {
 		final.Planned++
 	case domain.OutcomeFailed:
 		final.Failed++
+	case domain.OutcomeSkipped:
+		final.Skipped++
 	}
 }

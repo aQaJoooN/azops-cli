@@ -44,6 +44,12 @@ func (r *Reporter) Render(final domain.FinalResult) error {
 		if result.Err != nil {
 			fmt.Fprintf(&output, "    error: %s\n", result.Err)
 		}
+		if result.SkipReason != "" {
+			fmt.Fprintf(&output, "    warning: %s\n", result.SkipReason)
+		}
+		for _, w := range result.Warnings {
+			fmt.Fprintf(&output, "    warning: %s\n", w)
+		}
 		changes := append([]domain.ChangeSummary(nil), result.Changes...)
 		sort.SliceStable(changes, func(i, j int) bool {
 			if changes[i].Summary != changes[j].Summary {
@@ -66,8 +72,8 @@ func (r *Reporter) Render(final domain.FinalResult) error {
 	if final.Success {
 		status = "success"
 	}
-	fmt.Fprintf(&output, "Final: %s (changed=%d unchanged=%d planned=%d failed=%d)\n",
-		status, final.Changed, final.Unchanged, final.Planned, final.Failed)
+	fmt.Fprintf(&output, "Final: %s (changed=%d unchanged=%d planned=%d failed=%d skipped=%d)\n",
+		status, final.Changed, final.Unchanged, final.Planned, final.Failed, final.Skipped)
 	return r.write(output.String())
 }
 

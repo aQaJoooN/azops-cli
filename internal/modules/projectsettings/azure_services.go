@@ -690,6 +690,8 @@ func (s *AzureRepositoryService) SetRepositoryAccess(ctx context.Context, projec
 // AzureSettingsService implements SettingsService using confirmed public REST APIs.
 // General toggles: PATCH /{project}/_apis/build/generalsettings?api-version=7.1
 // Retention: GET/PATCH /{project}/_apis/build/retention?api-version=7.0
+// Note: build/retention PATCH may be silently ignored when a collection-level maximum policy
+// is enforced by an administrator. retentionOverridden tracks this per project.
 type AzureSettingsService struct {
 	build          *azure.Adapter
 	buildRetention *azure.Adapter
@@ -713,11 +715,12 @@ type generalSettingsResponse struct {
 	DisableImpliedYAMLCiTrigger        bool `json:"disableImpliedYAMLCiTrigger"`
 }
 
-// retentionResponse maps the confirmed build/retention API response fields.
-type retentionResponse struct {
-	PurgeArtifacts        *struct{ Value int `json:"value"` } `json:"purgeArtifacts"`
-	PurgeRuns             *struct{ Value int `json:"value"` } `json:"purgeRuns"`
-	PurgePullRequestRuns  *struct{ Value int `json:"value"` } `json:"purgePullRequestRuns"`
+// buildRetentionResponse maps the confirmed build/retention API response fields.
+// Endpoint: GET/PATCH /{project}/_apis/build/retention?api-version=7.0
+type buildRetentionResponse struct {
+	PurgeArtifacts       *struct{ Value int `json:"value"` } `json:"purgeArtifacts"`
+	PurgeRuns            *struct{ Value int `json:"value"` } `json:"purgeRuns"`
+	PurgePullRequestRuns *struct{ Value int `json:"value"` } `json:"purgePullRequestRuns"`
 }
 
 func onOffToBool(v config.OnOff) bool { return v == config.On }
@@ -747,9 +750,24 @@ func (s *AzureSettingsService) ReadPipelineSettings(ctx context.Context, project
 	cfg.General.DisableClassicRelease = boolToOnOff(g.DisableClassicReleasePipelineCreation)
 	cfg.General.EnableShellArgumentValidation = boolToOnOff(g.EnableShellTasksArgsSanitizing)
 	cfg.Triggers.DisableImpliedYAMLCI = boolToOnOff(g.DisableImpliedYAMLCiTrigger)
-	// RetentionPolicy is intentionally not read — the build/retention PATCH endpoint
-	// does not persist on Azure DevOps Server 2022.2 without elevated permissions.
-	// RetentionPolicy fields are left at zero so they never trigger a diff.
+
+	// Read Days_to_keep_* from build/retention.
+	// Note: a collection-level maximum policy may cap these values regardless of what we write.
+	// The Plan layer handles this by excluding retention from the idempotency check.
+	if s.buildRetention != nil {
+		var r buildRetentionResponse
+		if err := s.buildRetention.Do(ctx, azure.Request{Project: project, Path: ""}, &r); err == nil {
+			if r.PurgeArtifacts != nil {
+				cfg.RetentionPolicy.ArtifactDays = r.PurgeArtifacts.Value
+			}
+			if r.PurgeRuns != nil {
+				cfg.RetentionPolicy.RunDays = r.PurgeRuns.Value
+			}
+			if r.PurgePullRequestRuns != nil {
+				cfg.RetentionPolicy.PullRequestDays = r.PurgePullRequestRuns.Value
+			}
+		}
+	}
 	return cfg, nil
 }
 
@@ -757,6 +775,7 @@ func (s *AzureSettingsService) SetPipelineSettings(ctx context.Context, project 
 	if s == nil || s.build == nil {
 		return fmt.Errorf("build adapter is required")
 	}
+	// Apply general toggle settings.
 	generalPayload := map[string]bool{
 		"statusBadgesArePrivate":                onOffToBool(cfg.General.DisableAnonymousBadges),
 		"enforceSettableVar":                    onOffToBool(cfg.General.LimitQueueTimeVariables),
@@ -769,10 +788,37 @@ func (s *AzureSettingsService) SetPipelineSettings(ctx context.Context, project 
 		"enableShellTasksArgsSanitizing":        onOffToBool(cfg.General.EnableShellArgumentValidation),
 		"disableImpliedYAMLCiTrigger":           onOffToBool(cfg.Triggers.DisableImpliedYAMLCI),
 	}
-	return s.build.Do(ctx, azure.Request{
+	if err := s.build.Do(ctx, azure.Request{
 		Project: project,
 		Method:  http.MethodPatch,
 		Path:    "generalsettings",
 		Body:    generalPayload,
-	}, nil)
+	}, nil); err != nil {
+		return err
+	}
+
+	// Apply Days_to_keep_* via build/retention if any are non-zero.
+	// After writing, read back to detect collection-level override (server silently ignores the PATCH).
+	r := cfg.RetentionPolicy
+	if s.buildRetention != nil && (r.ArtifactDays > 0 || r.RunDays > 0 || r.PullRequestDays > 0) {
+		retentionPayload := map[string]any{}
+		if r.ArtifactDays > 0 {
+			retentionPayload["purgeArtifacts"] = map[string]int{"value": r.ArtifactDays}
+		}
+		if r.RunDays > 0 {
+			retentionPayload["purgeRuns"] = map[string]int{"value": r.RunDays}
+		}
+		if r.PullRequestDays > 0 {
+			retentionPayload["purgePullRequestRuns"] = map[string]int{"value": r.PullRequestDays}
+		}
+		if err := s.buildRetention.Do(ctx, azure.Request{
+			Project: project,
+			Method:  http.MethodPatch,
+			Path:    "",
+			Body:    retentionPayload,
+		}, nil); err != nil {
+			return fmt.Errorf("set build retention: %w", err)
+		}
+	}
+	return nil
 }

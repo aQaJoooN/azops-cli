@@ -19,6 +19,7 @@ const (
 	OutcomePlanned   Outcome = "planned"
 	OutcomeChanged   Outcome = "changed"
 	OutcomeFailed    Outcome = "failed"
+	OutcomeSkipped   Outcome = "skipped"
 )
 
 // ChangeSummary is safe for human-readable reporting.
@@ -35,12 +36,14 @@ type ApplyResult struct {
 
 // ModuleResult captures the complete result of one module.
 type ModuleResult struct {
-	Stage     int
-	Module    ModuleID
-	Component ComponentPath
-	Outcome   Outcome
-	Changes   []ChangeSummary
-	Err       error
+	Stage      int
+	Module     ModuleID
+	Component  ComponentPath
+	Outcome    Outcome
+	Changes    []ChangeSummary
+	Warnings   []string
+	SkipReason string
+	Err        error
 }
 
 // FinalResult aggregates all completed module results.
@@ -51,4 +54,5 @@ type FinalResult struct {
 	Unchanged int
 	Planned   int
 	Failed    int
+	Skipped   int
 }

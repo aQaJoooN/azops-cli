@@ -51,6 +51,18 @@ type RoleChange struct {
 }
 
 func PlanAccess(assignments config.AccessAssignments, bits map[config.PermissionName]AccessBit, principals map[config.GroupSelector][]Principal, current map[string]map[AccessBit]config.AccessValue) ([]AccessChange, error) {
+	return planAccess(assignments, bits, principals, current, false)
+}
+
+// PlanAccessFull returns the same result as PlanAccess but includes every
+// principal/permission pair regardless of whether current matches desired.
+// Used to build a complete ACE set for sub-folder writes so that Not_Set
+// groups get explicit zero-bit entries, blocking parent-path inheritance.
+func PlanAccessFull(assignments config.AccessAssignments, bits map[config.PermissionName]AccessBit, principals map[config.GroupSelector][]Principal) ([]AccessChange, error) {
+	return planAccess(assignments, bits, principals, nil, true)
+}
+
+func planAccess(assignments config.AccessAssignments, bits map[config.PermissionName]AccessBit, principals map[config.GroupSelector][]Principal, current map[string]map[AccessBit]config.AccessValue, includeAll bool) ([]AccessChange, error) {
 	changes := make([]AccessChange, 0)
 	seen := make(map[string]config.AccessValue)
 	for permission, byAccess := range assignments {
@@ -77,15 +89,17 @@ func PlanAccess(assignments config.AccessAssignments, bits map[config.Permission
 					}
 					seen[key] = desired
 					currentValue := config.AccessNotSet
-					if values := current[principal.Descriptor]; values != nil {
-						if value, exists := values[bit]; exists {
-							if !validAccess(value) {
-								return nil, fmt.Errorf("permission %q has unsupported current access value %q", permission, value)
+					if current != nil {
+						if values := current[principal.Descriptor]; values != nil {
+							if value, exists := values[bit]; exists {
+								if !validAccess(value) {
+									return nil, fmt.Errorf("permission %q has unsupported current access value %q", permission, value)
+								}
+								currentValue = value
 							}
-							currentValue = value
 						}
 					}
-					if currentValue != desired {
+					if includeAll || currentValue != desired {
 						changes = append(changes, AccessChange{permission, bit, principal, currentValue, desired})
 					}
 				}

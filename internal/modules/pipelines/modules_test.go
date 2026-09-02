@@ -122,7 +122,7 @@ func (service *scopedMemory) ReadScopedAccess(_ context.Context, _, path string)
 	return service.access, nil
 }
 
-func (service *scopedMemory) SetScopedAccess(_ context.Context, _, path string, _ []permissions.AccessChange) error {
+func (service *scopedMemory) SetScopedAccess(_ context.Context, _, path string, _ []permissions.AccessChange, _ []permissions.AccessChange) error {
 	service.setPaths = append(service.setPaths, path)
 	return nil
 }
