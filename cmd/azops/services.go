@@ -22,7 +22,7 @@ func applicationDependencies(services azure.Services) detector.Dependencies {
 		AgentPools:         projectsettings.NewAzureAgentPoolService(services, directory),
 		Release:            unsupported,
 		ServiceConnections: unsupported,
-		Test:               unsupported,
+		Test:               projectsettings.NewAzureTestService(services),
 		ServiceHook:        projectsettings.NewAzureServiceHookService(services),
 		Settings:           projectsettings.NewAzureSettingsService(services),
 		Overview:           projectsettings.UnsupportedOverviewService{},
