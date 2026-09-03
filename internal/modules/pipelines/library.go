@@ -42,39 +42,45 @@ func (module *libraryModule) Plan(ctx context.Context, input domain.ModuleInput)
 	if module.service == nil || module.directory == nil {
 		return plan, moduleError(module, "read current state", fmt.Errorf("library service and group directory are required"))
 	}
-	currentGroups, err := module.service.ListVariableGroups(ctx, cfg.General.TeamProjectName)
-	if err != nil {
-		return plan, moduleError(module, "list variable groups", err)
-	}
-	currentByName := make(map[string]VariableGroup, len(currentGroups))
-	for _, group := range currentGroups {
-		currentByName[group.Name] = group
-	}
-	secretByName := make(map[string]config.VariableGroupSecret)
-	for _, secret := range secretConfig(input).Pipelines.Library {
-		secretByName[secret.Name] = secret
-	}
-	names := append([]string(nil), cfg.Pipelines.Library.Create...)
-	sort.Strings(names)
-	for _, name := range names {
-		secret, exists := secretByName[name]
-		if !exists {
-			return plan, moduleError(module, "match variable group secret", fmt.Errorf("missing same-name secret entry for %q", name))
+
+	// --- create section: only runs when variable groups are listed ---
+	if len(cfg.Pipelines.Library.Create) > 0 {
+		currentGroups, err := module.service.ListVariableGroups(ctx, cfg.General.TeamProjectName)
+		if err != nil {
+			return plan, moduleError(module, "list variable groups", err)
 		}
-		desiredVariables := variableMap(secret.Variables)
-		current, exists := currentByName[name]
-		if exists && reflect.DeepEqual(current.Variables, desiredVariables) {
-			continue
+		currentByName := make(map[string]VariableGroup, len(currentGroups))
+		for _, group := range currentGroups {
+			currentByName[group.Name] = group
 		}
-		kind := domain.OperationCreate
-		if exists {
-			kind = domain.OperationUpdate
+		secretByName := make(map[string]config.VariableGroupSecret)
+		for _, secret := range secretConfig(input).Pipelines.Library {
+			secretByName[secret.Name] = secret
 		}
-		plan.Operations = append(plan.Operations, domain.Operation{
-			Kind: kind, Resource: name, Summary: string(kind) + " variable group " + name,
-			Payload: variableGroupPayload{Project: cfg.General.TeamProjectName, Secret: secret},
-		})
+		names := append([]string(nil), cfg.Pipelines.Library.Create...)
+		sort.Strings(names)
+		for _, name := range names {
+			secret, exists := secretByName[name]
+			if !exists {
+				return plan, moduleError(module, "match variable group secret", fmt.Errorf("missing same-name secret entry for %q", name))
+			}
+			desiredVariables := variableMap(secret.Variables)
+			current, exists := currentByName[name]
+			if exists && reflect.DeepEqual(current.Variables, desiredVariables) {
+				continue
+			}
+			kind := domain.OperationCreate
+			if exists {
+				kind = domain.OperationUpdate
+			}
+			plan.Operations = append(plan.Operations, domain.Operation{
+				Kind: kind, Resource: name, Summary: string(kind) + " variable group " + name,
+				Payload: variableGroupPayload{Project: cfg.General.TeamProjectName, Secret: secret},
+			})
+		}
 	}
+
+	// --- permissions section: always runs when library config is present ---
 	principals, err := resolveRolePrincipals(ctx, cfg.General, cfg.Pipelines.Library.Permissions, module.directory)
 	if err != nil {
 		return plan, moduleError(module, "resolve groups", err)

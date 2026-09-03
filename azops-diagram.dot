@@ -23,7 +23,7 @@ digraph azops_cli {
         main        [label="main()\nsignal + os.Exit"]
         run         [label="run()\norchestrate startup"]
         appDeps     [label="applicationDependencies()\nbind services → Dependencies"]
-        unsupported [label="unsupportedServices{}\nnoop stubs\n(Dashboards, Release,\nServiceConnections, Test,\nLibrary)"]
+        unsupported [label="unsupportedServices{}\nnoop stubs\n(Dashboards, Release,\nServiceConnections, Test)"]
     }
 
     main -> run
@@ -234,7 +234,7 @@ digraph azops_cli {
         plRel    [label="releasesModule (scopedModule)\nstage 4 / NewReleases(...)\nPlan: PlanAccess (delta) +\n  PlanAccessFull (full ACE set\n  for sub-folders on drift)\nApply: SetScopedAccess(\n  changes, allACEs)"]
 
         plEnvSvc  [label="EnvironmentService\nReadEnvironmentRoles / SetEnvironmentRoles"]
-        plLibSvc  [label="LibraryService"]
+        plLibSvc  [label="LibraryService\nReadLibraryRoles / SetLibraryRoles\n(ListVariableGroups / UpsertVariableGroup\n for create section)"]
         plTaskSvc [label="TaskGroupService\nReadTaskGroupAccess / SetTaskGroupAccess"]
         plDeplSvc [label="DeploymentGroupService\nReadDeploymentGroupRoles / SetDeploymentGroupRoles"]
         plScopSvc [label="ScopedPermissionService\nReadScopedAccess(project, path)\n→ AccessSnapshot{\n  Bits, Values,\n  inheritPermissions flag\n}\nSetScopedAccess(project, path,\n  changes, allACEs)"]
@@ -329,6 +329,7 @@ digraph azops_cli {
         azEnvImpl  [label="AzureEnvironmentService\nNewAzureEnvironmentService(services, dir)\n\nEnvironment namespace: 83d4c2e6…\nToken: Environments/{projectId}\nRoles → ACL allow bits:\n  Administrator=63, Creator=33\n  User=17, Reader=1\n\nGET  accesscontrollists/{ns}?token=…\nPOST AccessControlEntries/{ns}"]
         azTaskImpl [label="AzureTaskGroupService\nNewAzureTaskGroupService(services)\n\nMetaTask namespace: f6a4de49…\nToken: {projectId}\nBits: Administer=1, Edit=2, Delete=4\n\nGET  accesscontrollists/{ns}?token=…\nPOST AccessControlEntries/{ns}"]
         azDeplImpl [label="AzureDeploymentGroupService\nNewAzureDeploymentGroupService(services)\n\nDistributedTask namespace: 101eae8c…\nToken: MachineGroups/{projectId}\nRoles → ACL allow bits:\n  Administrator=59, Creator=33\n  User=17, Reader=1\n\nGET  accesscontrollists/{ns}?token=…\nPOST AccessControlEntries/{ns}"]
+        azLibImpl  [label="AzureLibraryService\nNewAzureLibraryService(services, dir)\n\nLibrary namespace: b7e84409…\nToken: Library/{projectId}\nRoles → ACL allow bits:\n  Administrator=63, Creator=5\n  User=17, Reader=1\n\nGET  accesscontrollists/{ns}?token=…\nPOST AccessControlEntries/{ns}\n\nListVariableGroups / UpsertVariableGroup:\n  unsupported (create section only,\n  skipped when Create list is empty)"]
     }
 
     azServices -> azEnvImpl  [label="uses SecurityACL,\nProjects"]
@@ -337,6 +338,8 @@ digraph azops_cli {
     azEnvImpl  -> plEnvSvc  [style=dashed label="implements"]
     azTaskImpl -> plTaskSvc [style=dashed label="implements"]
     azDeplImpl -> plDeplSvc [style=dashed label="implements"]
+    azServices -> azLibImpl  [label="uses SecurityACL,\nProjects"]
+    azLibImpl  -> plLibSvc  [style=dashed label="implements"]
 
     // ─── Error types used across layers ───────────────────────────────────────
     domErrors -> run      [style=dashed color="#999999" label="bubbles to"]

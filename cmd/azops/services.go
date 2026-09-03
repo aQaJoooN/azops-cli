@@ -27,7 +27,7 @@ func applicationDependencies(services azure.Services) detector.Dependencies {
 		Settings:           projectsettings.NewAzureSettingsService(services),
 		Overview:           projectsettings.UnsupportedOverviewService{},
 		Environments:       pipelines.NewAzureEnvironmentService(services, directory),
-		Library:            unsupported,
+		Library:            pipelines.NewAzureLibraryService(services, directory),
 		TaskGroups:         pipelines.NewAzureTaskGroupService(services),
 		DeploymentGroup:    pipelines.NewAzureDeploymentGroupService(services),
 		PipelineAccess:     pipelines.NewAzurePipelineScopedService(services),
