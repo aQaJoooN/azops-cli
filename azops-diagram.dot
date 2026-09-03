@@ -23,12 +23,12 @@ digraph azops_cli {
         main        [label="main()\nsignal + os.Exit"]
         run         [label="run()\norchestrate startup"]
         appDeps     [label="applicationDependencies()\nbind services → Dependencies"]
-        unsupported [label="unsupportedServices{}\nnoop stubs\n(Release, ServiceConnections)"]
+        unsupported [label="unsupportedServices{}\nnoop stubs\n(Release)"]
     }
 
     main -> run
     run  -> appDeps
-    appDeps -> unsupported [style=dashed label="implements\nmissing services"]
+    appDeps -> unsupported [style=dashed label="implements\nmissing services (Release)"]
     appDeps -> azTestImpl  [style=dashed label="NewAzureTestService"]
 
     // ─── CLI ───────────────────────────────────────────────────────────────────
@@ -185,7 +185,7 @@ digraph azops_cli {
         psDash       [label="dashboardsModule\nstage 2\nNewDashboards(...)"]
         psAgents     [label="agentPoolsModule\nstage 2\nNewAgentPools(...)"]
         psRelease    [label="releaseModule\nstage 2\nNewRelease(...)"]
-        psSvcConn    [label="serviceConnectionsModule\nstage 2\nNewServiceConnections(...)"]
+        psSvcConn    [label="serviceConnectionsModule\nstage 2\nNewServiceConnections(...)\n\ncreate section (secret.yaml):\n  overwrite: true|false\n  type / auth / url / user / password\n  apiKey / token / grant_access\n\npermissions section:\n  project-level: Creator/User/Reader via PlanRoles()\n  per-endpoint: Creator groups → User via PlanRoles()\n    (Creator inherited = User, idempotent)"]
         psTest       [label="testModule\nstage 2\nNewTest(...)"]
         psSvcHook    [label="serviceHookModule\nstage 5\nNewServiceHook(...)"]
         psSettings   [label="settingsModule\nstage 6\nNewSettings(...)"]
@@ -196,7 +196,7 @@ digraph azops_cli {
         psDashSvc [label="DashboardService"]
         psAgentSvc [label="AgentPoolService"]
         psRelSvc  [label="ReleaseService"]
-        psSvcCSvc [label="ServiceConnectionService"]
+        psSvcCSvc [label="ServiceConnectionService\nListServiceConnections\nUpsertServiceConnection\nReadServiceConnectionRoles / SetServiceConnectionRoles\nReadEndpointRoles / SetEndpointRoles"]
         psTestSvc [label="TestService"]
         psSvcHSvc [label="ServiceHookService"]
         psSetSvc  [label="SettingsService"]
@@ -314,19 +314,20 @@ digraph azops_cli {
         azAgentImpl [label="AzureAgentPoolService\nNewAzureAgentPoolService(services)"]
         azTestImpl  [label="AzureTestService\nNewAzureTestService(services)\n\nGET  /{project}/_apis/test/resultretentionsettings\nPATCH /{project}/_apis/test/resultretentionsettings\n\nautomatedResultsRetentionDuration\nmanualResultsRetentionDuration"]
         azDashImpl  [label="AzureDashboardService\nNewAzureDashboardService(services)\n\nNamespace: DashboardsPrivileges (8adf73b7-…)\nToken: $/projectId/teamId  (default team)\nDescriptor: team group ACE (suffix -1-…, non-system)\nBits: Read=1, Create=2, Edit=4, Delete=8, ManagePerm=16\n\nresolveProjectAndDefaultTeam(project):\n  GET _apis/projects → projectId\n  GET _apis/projects/{id}/teams → default teamId\n    (match name '{project} Team' or description 'default')\n\nRead:  GET  _apis/accesscontrollists/{ns}?token=$/pid/tid\n  → pick non-system ACE → allow/deny bits\n  Create/Edit/Delete = bit not in deny AND in allow\n\nWrite: POST _apis/AccessControlEntries/{ns}  merge:true\n  allow = Read(1) + enabled bits\n  deny  = ManagePerm(16) + disabled bits"]
-    }
+        azSvcConnImpl [label="AzureServiceConnectionService\nNewAzureServiceConnectionService(services, dir)\n\nScope: distributedtask.project.serviceendpointrole\n  Roles: Administrator, Creator, User, Reader\n\nListServiceConnections:\n  GET /{project}/_apis/serviceendpoint/endpoints\n  + GET /_apis/pipelines/pipelinepermissions/endpoint/{id}\n    → grant_access (allPipelines.authorized)\n\nUpsertServiceConnection (secret.yaml):\n  POST endpoints  (create)\n  PUT  endpoints/{id}  (update if overwrite:true)\n  PATCH pipelinepermissions/endpoint/{id}  → grant_access\n  Types: dockerregistry, externalnugetfeed, externalnpmregistry\n         sonarqube, generic\n\nReadServiceConnectionRoles / SetServiceConnectionRoles:\n  GET/PUT securityroles/scopes/{scope}/roleassignments/resources/{projectId}\n\nReadEndpointRoles / SetEndpointRoles:\n  GET/PUT securityroles/scopes/{scope}/roleassignments/resources/{projectId}_{endpointId}\n  Creator (inherited) treated as User for idempotency"]
 
     azServices -> azSecImpl   [label="uses adapters"]
     azServices -> azHookImpl  [label="uses adapters"]
     azServices -> azAgentImpl [label="uses adapters"]
     azServices -> azTestImpl  [label="uses Test adapter"]
     azServices -> azDashImpl  [label="uses SecurityACL,\nProjects"]
-    azSecImpl   -> psSecSvc   [style=dashed label="implements"]
-    azHookImpl  -> psSvcHSvc  [style=dashed label="implements"]
-    azAgentImpl -> psAgentSvc [style=dashed label="implements"]
-    azTestImpl  -> psTestSvc  [style=dashed label="implements"]
-    azDashImpl  -> psDashSvc  [style=dashed label="implements"]
-
+    azServices -> azSvcConnImpl [label="uses ServiceEndpoints,\nSecurityRoles, Projects,\nPipelinePerms"]
+    azSecImpl      -> psSecSvc   [style=dashed label="implements"]
+    azHookImpl     -> psSvcHSvc  [style=dashed label="implements"]
+    azAgentImpl    -> psAgentSvc [style=dashed label="implements"]
+    azTestImpl     -> psTestSvc  [style=dashed label="implements"]
+    azDashImpl     -> psDashSvc  [style=dashed label="implements"]
+    azSvcConnImpl  -> psSvcCSvc  [style=dashed label="implements"]
     // ─── Azure pipeline service implementations ────────────────────────────────
     subgraph cluster_azure_pipelines_impl {
         label="internal/modules/pipelines  (azure_pipelines_services.go)"

@@ -21,7 +21,7 @@ func applicationDependencies(services azure.Services) detector.Dependencies {
 		Dashboards:         projectsettings.NewAzureDashboardService(services),
 		AgentPools:         projectsettings.NewAzureAgentPoolService(services, directory),
 		Release:            unsupported,
-		ServiceConnections: unsupported,
+		ServiceConnections: projectsettings.NewAzureServiceConnectionService(services, directory),
 		Test:               projectsettings.NewAzureTestService(services),
 		ServiceHook:        projectsettings.NewAzureServiceHookService(services),
 		Settings:           projectsettings.NewAzureSettingsService(services),
@@ -48,18 +48,6 @@ func (unsupportedServices) ReadTestRetention(context.Context, string) (config.Te
 }
 func (unsupportedServices) SetTestRetention(context.Context, string, config.TestRetentionConfig) error {
 	return azure.Unsupported(azure.Test, "set test retention")
-}
-func (unsupportedServices) ListServiceConnections(context.Context, string) ([]projectsettings.ServiceConnection, error) {
-	return nil, azure.Unsupported(azure.ServiceEndpoints, "list service connections")
-}
-func (unsupportedServices) UpsertServiceConnection(context.Context, string, config.ServiceConnectionSecret) error {
-	return azure.Unsupported(azure.ServiceEndpoints, "upsert service connection")
-}
-func (unsupportedServices) ReadServiceConnectionRoles(context.Context, string) (map[string]config.Role, error) {
-	return nil, azure.Unsupported(azure.ServiceEndpoints, "read service connection roles")
-}
-func (unsupportedServices) SetServiceConnectionRoles(context.Context, string, []permissions.RoleChange) error {
-	return azure.Unsupported(azure.ServiceEndpoints, "set service connection roles")
 }
 func (unsupportedServices) ListServiceHooks(context.Context, string) ([]projectsettings.ServiceHook, error) {
 	return nil, azure.Unsupported(azure.ServiceHooks, "list service hooks")

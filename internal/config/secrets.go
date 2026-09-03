@@ -23,6 +23,7 @@ type ServiceHookSecret struct {
 
 type ServiceConnectionSecret struct {
 	Name        string `yaml:"name" redact:"-"`
+	Overwrite   string `yaml:"overwrite"` // "true" to always update even if exists (default "false")
 	Type        string `yaml:"type"`
 	Auth        string `yaml:"auth"`
 	URL         string `yaml:"url"`

@@ -64,6 +64,7 @@ type TestService interface {
 // ServiceConnection is the non-sensitive current-state representation.
 type ServiceConnection struct {
 	Name, Type, URL, Auth string
+	ID                    string // Azure DevOps endpoint GUID
 	GrantAccess           bool
 }
 type ServiceConnectionService interface {
@@ -71,6 +72,8 @@ type ServiceConnectionService interface {
 	UpsertServiceConnection(context.Context, string, config.ServiceConnectionSecret) error
 	ReadServiceConnectionRoles(context.Context, string) (map[string]config.Role, error)
 	SetServiceConnectionRoles(context.Context, string, []permissions.RoleChange) error
+	ReadEndpointRoles(context.Context, string, string) (map[string]config.Role, error)
+	SetEndpointRoles(context.Context, string, string, []permissions.RoleChange) error
 }
 
 // ServiceHook is the non-sensitive current-state representation.

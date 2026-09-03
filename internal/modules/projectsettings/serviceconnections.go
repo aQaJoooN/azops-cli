@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 
 	"azops-cli/internal/config"
 	"azops-cli/internal/domain"
@@ -21,6 +22,11 @@ type serviceConnectionPayload struct {
 type serviceConnectionRolesPayload struct {
 	Project string
 	Changes []permissions.RoleChange
+}
+type serviceConnectionEndpointRolesPayload struct {
+	Project    string
+	EndpointID string
+	Changes    []permissions.RoleChange
 }
 
 func NewServiceConnections(service ServiceConnectionService, directory permissions.GroupDirectory) domain.Module {
@@ -42,13 +48,18 @@ func (m *serviceConnectionsModule) Plan(ctx context.Context, input domain.Module
 	if len(cfg.ProjectSettings.ServiceConnections.Permissions) > 0 && m.directory == nil {
 		return plan, moduleError(m, "read current state", fmt.Errorf("group directory is required for service connection permissions"))
 	}
-	current, err := m.service.ListServiceConnections(ctx, cfg.General.TeamProjectName)
-	if err != nil {
-		return plan, moduleError(m, "list service connections", err)
-	}
+	// Only call ListServiceConnections when there are entries to create/update or permissions to plan.
 	byCurrent := map[string]ServiceConnection{}
-	for _, item := range current {
-		byCurrent[item.Name] = item
+	needsList := len(cfg.ProjectSettings.ServiceConnections.Create) > 0 ||
+		len(cfg.ProjectSettings.ServiceConnections.Permissions[config.RoleCreator]) > 0
+	if needsList {
+		current, err := m.service.ListServiceConnections(ctx, cfg.General.TeamProjectName)
+		if err != nil {
+			return plan, moduleError(m, "list service connections", err)
+		}
+		for _, item := range current {
+			byCurrent[item.Name] = item
+		}
 	}
 	secrets := secretConfig(input)
 	bySecret := map[string]config.ServiceConnectionSecret{}
@@ -63,8 +74,12 @@ func (m *serviceConnectionsModule) Plan(ctx context.Context, input domain.Module
 			return plan, moduleError(m, "match service connection secret", fmt.Errorf("missing same-name secret entry for %q", name))
 		}
 		existing, exists := byCurrent[name]
-		desired := ServiceConnection{Name: secret.Name, Type: secret.Type, URL: secret.URL, Auth: secret.Auth, GrantAccess: secret.GrantAccess}
-		if !exists || existing != desired {
+		_ = existing // existence check only; passwords are never returned so content diff is not meaningful
+		forceOverwrite := strings.EqualFold(secret.Overwrite, "true")
+		// Without overwrite, treat any existing connection as up-to-date (passwords are never
+		// returned by the API so a content diff is not meaningful).
+		needsUpsert := !exists || forceOverwrite
+		if needsUpsert {
 			kind := domain.OperationCreate
 			if exists {
 				kind = domain.OperationUpdate
@@ -104,6 +119,56 @@ func (m *serviceConnectionsModule) Plan(ctx context.Context, input domain.Module
 				Payload: serviceConnectionRolesPayload{Project: cfg.General.TeamProjectName, Changes: changes},
 			})
 		}
+
+		// Per-endpoint: Creator groups should have User role on each existing connection so they can use it.
+		// Creator role at project level already grants use rights via inheritance, so this only
+		// applies when a group has no role at all on the endpoint (neither assigned nor inherited).
+		creatorSelectors := cfg.ProjectSettings.ServiceConnections.Permissions[config.RoleCreator]
+		if len(creatorSelectors) > 0 {
+			creatorPrincipals := make(map[config.GroupSelector][]permissions.Principal)
+			for _, selector := range creatorSelectors {
+				if _, exists := creatorPrincipals[selector]; !exists {
+					creatorPrincipals[selector], err = resolver.Resolve(ctx, []config.GroupSelector{selector})
+					if err != nil {
+						return plan, moduleError(m, "resolve creator groups for endpoint roles", err)
+					}
+				}
+			}
+			desiredEndpointRoles := config.RoleAssignments{config.RoleUser: creatorSelectors}
+			// Creator already satisfies User — treat it as equivalent when reading current state.
+			supportedEndpoint := map[config.Role]struct{}{config.RoleAdministrator: {}, config.RoleCreator: {}, config.RoleUser: {}, config.RoleReader: {}}
+			for _, conn := range byCurrent {
+				if conn.ID == "" {
+					continue
+				}
+				currentEndpointRoles, err := m.service.ReadEndpointRoles(ctx, cfg.General.TeamProjectName, conn.ID)
+				if err != nil {
+					return plan, moduleError(m, "read endpoint roles for "+conn.Name, err)
+				}
+				// Normalize: Creator already grants use rights, count it as User for planning purposes.
+				for k, v := range currentEndpointRoles {
+					if v == config.RoleCreator {
+						currentEndpointRoles[k] = config.RoleUser
+					}
+				}
+				endpointChanges, err := permissions.PlanRoles(desiredEndpointRoles, creatorPrincipals, currentEndpointRoles, supportedEndpoint)
+				if err != nil {
+					return plan, moduleError(m, "plan endpoint roles for "+conn.Name, err)
+				}
+				if len(endpointChanges) > 0 {
+					plan.Operations = append(plan.Operations, domain.Operation{
+						Kind:     domain.OperationPermission,
+						Resource: conn.Name,
+						Summary:  fmt.Sprintf("set %d endpoint role assignment(s) on %s", len(endpointChanges), conn.Name),
+						Payload: serviceConnectionEndpointRolesPayload{
+							Project:    cfg.General.TeamProjectName,
+							EndpointID: conn.ID,
+							Changes:    endpointChanges,
+						},
+					})
+				}
+			}
+		}
 	}
 	return plan, nil
 }
@@ -118,6 +183,10 @@ func (m *serviceConnectionsModule) Apply(ctx context.Context, plan domain.Plan) 
 		case serviceConnectionRolesPayload:
 			if err := m.service.SetServiceConnectionRoles(ctx, p.Project, p.Changes); err != nil {
 				return result, moduleError(m, "set service connection roles", err)
+			}
+		case serviceConnectionEndpointRolesPayload:
+			if err := m.service.SetEndpointRoles(ctx, p.Project, p.EndpointID, p.Changes); err != nil {
+				return result, moduleError(m, "set endpoint roles for "+op.Resource, err)
 			}
 		default:
 			return result, moduleError(m, "apply plan", fmt.Errorf("unsupported service connection operation payload"))

@@ -505,7 +505,7 @@ func (v *validator) validateServiceConnection(field string, secret ServiceConnec
 	typeName := strings.ToLower(strings.TrimSpace(secret.Type))
 	auth := strings.ToLower(strings.TrimSpace(secret.Auth))
 	switch typeName {
-	case "docker registry":
+	case "docker registry", "dockerregistry":
 		v.requireSecret(field+".user", secret.User)
 		v.requireSecret(field+".password", secret.Password)
 	case "nuget":
@@ -513,17 +513,34 @@ func (v *validator) validateServiceConnection(field string, secret ServiceConnec
 			v.addSecret(field+".auth", "NuGet service connection requires ApiKey authentication")
 		}
 		v.requireSecret(field+".apiKey", secret.APIKey)
-	case "npm", "generic":
+	case "npm":
 		switch auth {
 		case "user and pass", "usernamepassword", "username and password":
-			v.requireSecret(field+".user", secret.User)
+			v.requireSecret(field+".password", secret.Password)
+		case "token":
+			v.requireSecret(field+".token", secret.Token)
+		default:
+			v.addSecret(field+".auth", fmt.Sprintf("unsupported authentication %q for npm service connection", secret.Auth))
+		}
+	case "sonarqube", "sonarqubeconnection":
+		switch auth {
+		case "user and pass", "usernamepassword", "username and password":
+			v.requireSecret(field+".password", secret.Password)
+		case "token":
+			v.requireSecret(field+".token", secret.Token)
+		default:
+			v.addSecret(field+".auth", fmt.Sprintf("unsupported authentication %q for SonarQube service connection", secret.Auth))
+		}
+	case "generic":
+		switch auth {
+		case "user and pass", "usernamepassword", "username and password":
 			v.requireSecret(field+".password", secret.Password)
 		case "token":
 			v.requireSecret(field+".token", secret.Token)
 		case "apikey", "api key":
 			v.requireSecret(field+".apiKey", secret.APIKey)
 		default:
-			v.addSecret(field+".auth", fmt.Sprintf("unsupported authentication %q for service connection type %q", secret.Auth, secret.Type))
+			v.addSecret(field+".auth", fmt.Sprintf("unsupported authentication %q for Generic service connection", secret.Auth))
 		}
 	default:
 		v.addSecret(field+".type", fmt.Sprintf("unsupported service connection type %q", secret.Type))
