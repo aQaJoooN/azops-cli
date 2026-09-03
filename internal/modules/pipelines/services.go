@@ -13,10 +13,17 @@ type EnvironmentService interface {
 	SetEnvironmentRoles(context.Context, string, []permissions.RoleChange) error
 }
 
+// VariableGroupVariable holds the value and secret flag for one variable in a group.
+type VariableGroupVariable struct {
+	Value    string
+	IsSecret bool
+}
+
 // VariableGroup is the managed, potentially sensitive state of one library variable group.
 type VariableGroup struct {
-	Name      string
-	Variables map[string]string
+	Name                string
+	PipelinePermissions string // "open" or "restrict"
+	Variables           map[string]VariableGroupVariable
 }
 
 // LibraryService manages selected variable groups and project-wide library roles.

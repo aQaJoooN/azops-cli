@@ -16,13 +16,13 @@ type PipelineSecrets struct {
 }
 
 type ServiceHookSecret struct {
-	Name  string `yaml:"name"`
+	Name  string `yaml:"name" redact:"-"`
 	Event string `yaml:"event"`
 	URL   string `yaml:"url"`
 }
 
 type ServiceConnectionSecret struct {
-	Name        string `yaml:"name"`
+	Name        string `yaml:"name" redact:"-"`
 	Type        string `yaml:"type"`
 	Auth        string `yaml:"auth"`
 	URL         string `yaml:"url"`
@@ -34,11 +34,14 @@ type ServiceConnectionSecret struct {
 }
 
 type VariableGroupSecret struct {
-	Name      string           `yaml:"name"`
-	Variables []SecretVariable `yaml:"variables"`
+	Name                string           `yaml:"name" redact:"-"`
+	PipelinePermissions string           `yaml:"pipeline_permissions"` // "open" or "restrict" (default "restrict")
+	Overwrite           string           `yaml:"overwrite"`            // "true" to always apply regardless of current state (default "false")
+	Variables           []SecretVariable `yaml:"variables"`
 }
 
 type SecretVariable struct {
-	Name  string `yaml:"name"`
-	Value string `yaml:"value"`
+	Name     string `yaml:"name" redact:"-"`
+	Value    string `yaml:"value"`
+	IsSecret string `yaml:"is_secret"` // "true" or "false" (default "false")
 }

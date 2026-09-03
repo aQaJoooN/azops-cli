@@ -3,7 +3,6 @@ package pipelines
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"sort"
 
 	"azops-cli/internal/config"
@@ -66,15 +65,22 @@ func (module *libraryModule) Plan(ctx context.Context, input domain.ModuleInput)
 			}
 			desiredVariables := variableMap(secret.Variables)
 			current, exists := currentByName[name]
-			if exists && reflect.DeepEqual(current.Variables, desiredVariables) {
+			if exists && secret.Overwrite != "true" && !variableGroupChanged(current, desiredVariables, pipelinePermissions(secret)) {
 				continue
 			}
 			kind := domain.OperationCreate
+			summary := "create variable group " + name
 			if exists {
-				kind = domain.OperationUpdate
+				if secret.Overwrite == "true" {
+					kind = domain.OperationUpdate
+					summary = "overwrite variable group " + name
+				} else {
+					kind = domain.OperationUpdate
+					summary = "update variable group " + name
+				}
 			}
 			plan.Operations = append(plan.Operations, domain.Operation{
-				Kind: kind, Resource: name, Summary: string(kind) + " variable group " + name,
+				Kind: kind, Resource: name, Summary: summary,
 				Payload: variableGroupPayload{Project: cfg.General.TeamProjectName, Secret: secret},
 			})
 		}
@@ -123,10 +129,47 @@ func (module *libraryModule) Apply(ctx context.Context, plan domain.Plan) (domai
 	return result, nil
 }
 
-func variableMap(variables []config.SecretVariable) map[string]string {
-	values := make(map[string]string, len(variables))
+func variableMap(variables []config.SecretVariable) map[string]VariableGroupVariable {
+	values := make(map[string]VariableGroupVariable, len(variables))
 	for _, variable := range variables {
-		values[variable.Name] = variable.Value
+		values[variable.Name] = VariableGroupVariable{
+			Value:    variable.Value,
+			IsSecret: variable.IsSecret == "true",
+		}
 	}
 	return values
+}
+
+// variableGroupChanged reports whether the desired state differs from current.
+// Secret variable values are never returned by the API (they come back as ""),
+// so we skip value comparison for variables marked as secret — only the secret
+// flag itself and the set of variable names are compared.
+func variableGroupChanged(current VariableGroup, desired map[string]VariableGroupVariable, desiredPP string) bool {
+	if current.PipelinePermissions != desiredPP {
+		return true
+	}
+	if len(current.Variables) != len(desired) {
+		return true
+	}
+	for name, desiredVar := range desired {
+		currentVar, exists := current.Variables[name]
+		if !exists {
+			return true
+		}
+		if currentVar.IsSecret != desiredVar.IsSecret {
+			return true
+		}
+		// Skip value comparison for secret variables — the API masks them.
+		if !desiredVar.IsSecret && currentVar.Value != desiredVar.Value {
+			return true
+		}
+	}
+	return false
+}
+
+func pipelinePermissions(secret config.VariableGroupSecret) string {
+	if secret.PipelinePermissions == "open" {
+		return "open"
+	}
+	return "restrict"
 }

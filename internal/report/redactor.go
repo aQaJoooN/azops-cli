@@ -67,7 +67,11 @@ func collectStrings(value reflect.Value, values map[string]struct{}) {
 	case reflect.String:
 		addValue(values, value.String())
 	case reflect.Struct:
+		t := value.Type()
 		for i := 0; i < value.NumField(); i++ {
+			if t.Field(i).Tag.Get("redact") == "-" {
+				continue
+			}
 			collectStrings(value.Field(i), values)
 		}
 	case reflect.Slice, reflect.Array:

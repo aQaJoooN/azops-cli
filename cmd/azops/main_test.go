@@ -37,7 +37,7 @@ func TestRunDryRunReportsPlannedChangeWithoutMutation(t *testing.T) {
 	for _, expected := range []string{
 		"Stage 1", "projectsettings.security: planned",
 		"planned: create project group project Dev Readers",
-		"Final: success (changed=0 unchanged=0 planned=1 failed=0)",
+		"Final: success (changed=0 unchanged=0 planned=1 failed=0 skipped=0)",
 	} {
 		if !strings.Contains(stdout, expected) {
 			t.Fatalf("stdout missing %q:\n%s", expected, stdout)
@@ -66,7 +66,7 @@ func TestRunDryRunReportsNoOp(t *testing.T) {
 		t.Fatalf("run exit/stderr = %d, %q", code, stderr)
 	}
 	if !strings.Contains(stdout, "projectsettings.security: unchanged") ||
-		!strings.Contains(stdout, "Final: success (changed=0 unchanged=1 planned=0 failed=0)") {
+		!strings.Contains(stdout, "Final: success (changed=0 unchanged=1 planned=0 failed=0 skipped=0)") {
 		t.Fatalf("unexpected no-op output:\n%s", stdout)
 	}
 }
