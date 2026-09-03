@@ -32,6 +32,7 @@ var (
 	Build            = Service{"build", ProjectScope, []string{"_apis", "build"}, "7.1"}
 	BuildRetention   = Service{"build retention", ProjectScope, []string{"_apis", "build", "retention"}, "7.0"}
 	Release          = Service{"release", ProjectScope, []string{"_apis", "release"}, "7.0"}
+	AgentPools       = Service{"agentpools", CollectionScope, []string{"_apis", "distributedtask", "pools"}, "7.0"}
 	DistributedTask  = Service{"distributedtask", ProjectScope, []string{"_apis", "distributedtask"}, "7.0"}
 	PipelinePerms    = Service{"pipeline permissions", ProjectScope, []string{"_apis", "pipelines", "pipelinepermissions"}, "7.1-preview.1"}
 	ServiceHooks     = Service{"hooks", CollectionScope, []string{"_apis", "hooks"}, "7.0"}
@@ -85,6 +86,7 @@ type Services struct {
 	BuildRetention   *Adapter
 	Release          *Adapter
 	DistributedTask  *Adapter
+	AgentPools       *Adapter
 	PipelinePerms    *Adapter
 	ServiceHooks     *Adapter
 	Dashboards       *Adapter
@@ -107,6 +109,7 @@ func NewServices(client *Client) Services {
 		BuildRetention:   NewAdapter(client, BuildRetention),
 		Release:          NewAdapter(client, Release),
 		DistributedTask:  NewAdapter(client, DistributedTask),
+		AgentPools:       NewAdapter(client, AgentPools),
 		PipelinePerms:    NewAdapter(client, PipelinePerms),
 		ServiceHooks:     NewAdapter(client, ServiceHooks),
 		Dashboards:       NewAdapter(client, Dashboards),
