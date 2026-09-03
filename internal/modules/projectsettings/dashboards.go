@@ -4,6 +4,7 @@ import (
 	"azops-cli/internal/config"
 	"azops-cli/internal/domain"
 	"context"
+	"errors"
 	"fmt"
 )
 
@@ -42,7 +43,12 @@ func (m *dashboardsModule) Apply(ctx context.Context, plan domain.Plan) (domain.
 		if !ok {
 			return result, moduleError(m, "apply plan", fmt.Errorf("unsupported dashboard operation payload"))
 		}
-		if err := m.service.SetDashboardSecurity(ctx, p.Project, p.Security); err != nil {
+		err := m.service.SetDashboardSecurity(ctx, p.Project, p.Security)
+		if errors.Is(err, ErrDashboardACLNotReady) {
+			// ACL not bootstrapped yet on this fresh project — skip silently, retry next run.
+			continue
+		}
+		if err != nil {
 			return result, moduleError(m, "set dashboard security", err)
 		}
 		result.Changes = append(result.Changes, domain.ChangeSummary{Kind: op.Kind, Resource: op.Resource, Summary: op.Summary})

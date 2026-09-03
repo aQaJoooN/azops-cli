@@ -1,11 +1,17 @@
 package projectsettings
 
 import (
+	"errors"
 	"fmt"
 
 	"azops-cli/internal/config"
 	"azops-cli/internal/domain"
 )
+
+// ErrDashboardACLNotReady is returned by SetDashboardSecurity when the dashboard ACL token
+// does not exist yet on a fresh project (Azure bootstraps it lazily). The caller should treat
+// this as a no-op and retry on the next run.
+var ErrDashboardACLNotReady = errors.New("dashboard ACL not yet bootstrapped")
 
 const (
 	SecurityID           domain.ModuleID = "projectSettings_security"

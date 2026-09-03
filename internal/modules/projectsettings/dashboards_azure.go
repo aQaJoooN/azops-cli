@@ -41,9 +41,7 @@ func NewAzureDashboardService(services azure.Services) *AzureDashboardService {
 }
 
 // resolveProjectAndDefaultTeam returns the project GUID and default team GUID.
-// It lists projects to get the project ID, then lists teams to get the default team ID.
 func (s *AzureDashboardService) resolveProjectAndDefaultTeam(ctx context.Context, project string) (projectID, teamID string, err error) {
-	// Step 1: resolve project ID.
 	var projResponse struct {
 		Value []struct {
 			ID   string `json:"id"`
@@ -66,7 +64,6 @@ func (s *AzureDashboardService) resolveProjectAndDefaultTeam(ctx context.Context
 		return "", "", fmt.Errorf("project %q not found", project)
 	}
 
-	// Step 2: list teams and pick the default (first team, or the one named "{project} Team").
 	var teamsResponse struct {
 		Value []struct {
 			ID          string `json:"id"`
@@ -83,7 +80,6 @@ func (s *AzureDashboardService) resolveProjectAndDefaultTeam(ctx context.Context
 	if len(teamsResponse.Value) == 0 {
 		return "", "", fmt.Errorf("no teams found for project %q", project)
 	}
-	// Prefer the team described as default or named "{project} Team".
 	teamID = teamsResponse.Value[0].ID
 	for _, t := range teamsResponse.Value {
 		if strings.EqualFold(t.Name, project+" Team") ||
@@ -121,7 +117,6 @@ func (s *AzureDashboardService) readTeamACE(ctx context.Context, projectID, team
 	}
 
 	// The team group descriptor ends in -1-... (not -0-0-0-0-1/2/3 which are system groups).
-	// Pick the first non-system ACE.
 	for desc, ace := range aclResponse.Value[0].AcesDictionary {
 		if !strings.HasSuffix(desc, "-0-0-0-0-1") &&
 			!strings.HasSuffix(desc, "-0-0-0-0-2") &&
@@ -153,7 +148,6 @@ func (s *AzureDashboardService) ReadDashboardSecurity(ctx context.Context, proje
 		return config.DashboardSecurity{Create: true, Edit: true, Delete: true}, nil
 	}
 
-	// A permission is enabled (true) when NOT in deny AND present in allow.
 	return config.DashboardSecurity{
 		Create: denyBits&dashboardBitCreate == 0 && allowBits&dashboardBitCreate != 0,
 		Edit:   denyBits&dashboardBitEdit == 0 && allowBits&dashboardBitEdit != 0,
@@ -162,6 +156,9 @@ func (s *AzureDashboardService) ReadDashboardSecurity(ctx context.Context, proje
 }
 
 // SetDashboardSecurity applies dashboard security at the team ACL token.
+// On a fresh project the ACL token doesn't exist yet (Azure creates it lazily after the first
+// dashboard interaction). In that case ErrDashboardACLNotReady is returned — callers should
+// treat this as a no-op and retry on the next run.
 func (s *AzureDashboardService) SetDashboardSecurity(ctx context.Context, project string, cfg config.DashboardSecurity) error {
 	if s == nil || s.securityACL == nil {
 		return fmt.Errorf("security ACL adapter is required")
@@ -176,12 +173,11 @@ func (s *AzureDashboardService) SetDashboardSecurity(ctx context.Context, projec
 	if err != nil {
 		return err
 	}
+	// ACL token not yet bootstrapped — signal the caller to skip silently.
 	if descriptor == "" {
-		return fmt.Errorf("could not find team group ACE descriptor for project %q", project)
+		return ErrDashboardACLNotReady
 	}
 
-	// Build allow/deny bits.
-	// Read is always allowed. ManagePermissions is always denied.
 	allowBits := dashboardBitRead
 	denyBits := dashboardBitManagePermissions
 
