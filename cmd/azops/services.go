@@ -18,7 +18,7 @@ func applicationDependencies(services azure.Services) detector.Dependencies {
 		GroupDirectory:     directory,
 		Security:           projectsettings.NewAzureSecurityService(services, directory),
 		Repositories:       projectsettings.NewAzureRepositoryService(services),
-		Dashboards:         unsupported,
+		Dashboards:         projectsettings.NewAzureDashboardService(services),
 		AgentPools:         projectsettings.NewAzureAgentPoolService(services, directory),
 		Release:            unsupported,
 		ServiceConnections: unsupported,
@@ -37,12 +37,6 @@ func applicationDependencies(services azure.Services) detector.Dependencies {
 
 type unsupportedServices struct{}
 
-func (unsupportedServices) ReadDashboardSecurity(context.Context, string) (config.DashboardSecurity, error) {
-	return config.DashboardSecurity{}, azure.Unsupported(azure.Dashboards, "read dashboard security")
-}
-func (unsupportedServices) SetDashboardSecurity(context.Context, string, config.DashboardSecurity) error {
-	return azure.Unsupported(azure.Dashboards, "set dashboard security")
-}
 func (unsupportedServices) ReadReleaseRetention(context.Context, string) (config.ReleaseRetentionConfig, error) {
 	return config.ReleaseRetentionConfig{}, azure.Unsupported(azure.Release, "read release retention")
 }

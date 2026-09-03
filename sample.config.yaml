@@ -350,10 +350,10 @@ projectsettings: # refer to Team Project Settings
         - "43"
       Reader:
         - "14"
-  test: # refer to Test Retention in Test in Team Project Settings (unsupported)
+  test: # refer to Test Retention in Test in Team Project Settings
     Retention:
-      Days_to_keep_automated_test_runs_results_and_attachments_when_not_associated_with_pipeline: 20
-      Days_to_keep_manual_test_runs_results_and_attachments: 20
+      Days_to_keep_automated_test_runs_results_and_attachments_when_not_associated_with_pipeline: 10
+      Days_to_keep_manual_test_runs_results_and_attachments: 60
 pipelines: # refer to Pipelines
   pipelines: # refer to Pipelines in Pipelines
     permissions:
