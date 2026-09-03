@@ -45,7 +45,8 @@ func (module *environmentsModule) Plan(ctx context.Context, input domain.ModuleI
 	if err != nil {
 		return plan, moduleError(module, "read environment roles", err)
 	}
-	changes, err := permissions.PlanRoles(cfg.Pipelines.Environments.Permissions, principals, current, pipelineRoles())
+	supported := pipelineRoles()
+	changes, err := permissions.PlanRoles(cfg.Pipelines.Environments.Permissions, principals, current, supported)
 	if err != nil {
 		return plan, moduleError(module, "plan environment roles", err)
 	}
@@ -99,3 +100,4 @@ func pipelineRoles() map[config.Role]struct{} {
 		config.RoleAdministrator: {}, config.RoleCreator: {}, config.RoleUser: {}, config.RoleReader: {},
 	}
 }
+

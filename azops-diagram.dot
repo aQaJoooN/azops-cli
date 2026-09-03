@@ -23,7 +23,7 @@ digraph azops_cli {
         main        [label="main()\nsignal + os.Exit"]
         run         [label="run()\norchestrate startup"]
         appDeps     [label="applicationDependencies()\nbind services → Dependencies"]
-        unsupported [label="unsupportedServices{}\nnoop stubs"]
+        unsupported [label="unsupportedServices{}\nnoop stubs\n(Dashboards, Release,\nServiceConnections, Test,\nLibrary)"]
     }
 
     main -> run
@@ -233,10 +233,10 @@ digraph azops_cli {
         plPipes  [label="pipelinesModule (scopedModule)\nstage 4 / NewPipelines(...)\nPlan: PlanAccess (delta) +\n  PlanAccessFull (full ACE set\n  for sub-folders on drift)\nApply: SetScopedAccess(\n  changes, allACEs)"]
         plRel    [label="releasesModule (scopedModule)\nstage 4 / NewReleases(...)\nPlan: PlanAccess (delta) +\n  PlanAccessFull (full ACE set\n  for sub-folders on drift)\nApply: SetScopedAccess(\n  changes, allACEs)"]
 
-        plEnvSvc  [label="EnvironmentService"]
+        plEnvSvc  [label="EnvironmentService\nReadEnvironmentRoles / SetEnvironmentRoles"]
         plLibSvc  [label="LibraryService"]
-        plTaskSvc [label="TaskGroupService"]
-        plDeplSvc [label="DeploymentGroupService"]
+        plTaskSvc [label="TaskGroupService\nReadTaskGroupAccess / SetTaskGroupAccess"]
+        plDeplSvc [label="DeploymentGroupService\nReadDeploymentGroupRoles / SetDeploymentGroupRoles"]
         plScopSvc [label="ScopedPermissionService\nReadScopedAccess(project, path)\n→ AccessSnapshot{\n  Bits, Values,\n  inheritPermissions flag\n}\nSetScopedAccess(project, path,\n  changes, allACEs)"]
     }
 
@@ -319,6 +319,24 @@ digraph azops_cli {
     azSecImpl   -> psSecSvc   [style=dashed label="implements"]
     azHookImpl  -> psSvcHSvc  [style=dashed label="implements"]
     azAgentImpl -> psAgentSvc [style=dashed label="implements"]
+
+    // ─── Azure pipeline service implementations ────────────────────────────────
+    subgraph cluster_azure_pipelines_impl {
+        label="internal/modules/pipelines  (azure_pipelines_services.go)"
+        style=filled color="#E8F5E9" fontcolor="#1B5E20" fontsize=11
+        node [fillcolor="#C8E6C9" color="#388E3C"]
+
+        azEnvImpl  [label="AzureEnvironmentService\nNewAzureEnvironmentService(services, dir)\n\nEnvironment namespace: 83d4c2e6…\nToken: Environments/{projectId}\nRoles → ACL allow bits:\n  Administrator=63, Creator=33\n  User=17, Reader=1\n\nGET  accesscontrollists/{ns}?token=…\nPOST AccessControlEntries/{ns}"]
+        azTaskImpl [label="AzureTaskGroupService\nNewAzureTaskGroupService(services)\n\nMetaTask namespace: f6a4de49…\nToken: {projectId}\nBits: Administer=1, Edit=2, Delete=4\n\nGET  accesscontrollists/{ns}?token=…\nPOST AccessControlEntries/{ns}"]
+        azDeplImpl [label="AzureDeploymentGroupService\nNewAzureDeploymentGroupService(services)\n\nDistributedTask namespace: 101eae8c…\nToken: MachineGroups/{projectId}\nRoles → ACL allow bits:\n  Administrator=59, Creator=33\n  User=17, Reader=1\n\nGET  accesscontrollists/{ns}?token=…\nPOST AccessControlEntries/{ns}"]
+    }
+
+    azServices -> azEnvImpl  [label="uses SecurityACL,\nProjects"]
+    azServices -> azTaskImpl [label="uses SecurityACL,\nProjects"]
+    azServices -> azDeplImpl [label="uses SecurityACL,\nProjects"]
+    azEnvImpl  -> plEnvSvc  [style=dashed label="implements"]
+    azTaskImpl -> plTaskSvc [style=dashed label="implements"]
+    azDeplImpl -> plDeplSvc [style=dashed label="implements"]
 
     // ─── Error types used across layers ───────────────────────────────────────
     domErrors -> run      [style=dashed color="#999999" label="bubbles to"]

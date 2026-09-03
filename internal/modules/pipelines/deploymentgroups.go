@@ -2,8 +2,10 @@ package pipelines
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
+	"azops-cli/internal/azure"
 	"azops-cli/internal/domain"
 	"azops-cli/internal/modules/permissions"
 )
@@ -42,6 +44,11 @@ func (module *deploymentGroupModule) Plan(ctx context.Context, input domain.Modu
 	}
 	current, err := module.service.ReadDeploymentGroupRoles(ctx, cfg.General.TeamProjectName)
 	if err != nil {
+		var unsupported *azure.UnsupportedOperationError
+		if errors.As(err, &unsupported) {
+			plan.SkipReason = unsupported.Error()
+			return plan, nil
+		}
 		return plan, moduleError(module, "read deployment group roles", err)
 	}
 	changes, err := permissions.PlanRoles(cfg.Pipelines.DeploymentGroup.Permissions, principals, current, pipelineRoles())
