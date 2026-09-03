@@ -143,6 +143,7 @@ func (s *securityMemory) SetProjectAccess(_ context.Context, _ string, changes [
 	s.accessWrites = append(s.accessWrites, append([]permissions.AccessChange(nil), changes...))
 	return nil
 }
+func (s *securityMemory) Invalidate(string) {}
 
 func securityInput(create bool) domain.ModuleInput {
 	return domain.ModuleInput{DesiredState: config.Config{

@@ -187,7 +187,7 @@ digraph azops_cli {
         psRelease    [label="releaseModule\nstage 2\nNewRelease(...)"]
         psSvcConn    [label="serviceConnectionsModule\nstage 2\nNewServiceConnections(...)\n\ncreate section (secret.yaml):\n  overwrite: true|false\n  type / auth / url / user / password\n  apiKey / token / grant_access\n\npermissions section:\n  project-level: Creator/User/Reader via PlanRoles()\n  per-endpoint: Creator groups → User via PlanRoles()\n    (Creator inherited = User, idempotent)"]
         psTest       [label="testModule\nstage 2\nNewTest(...)"]
-        psSvcHook    [label="serviceHookModule\nstage 5\nNewServiceHook(...)"]
+        psSvcHook    [label="serviceHookModule\nstage 5\nNewServiceHook(...)\n\nPlan: match by serviceHookKey(eventType, url)\n  create if no key match\n  skip if sameServiceHook (event+url equal)\nApply: UpsertServiceHook(subscriptionID, secret)"]
         psSettings   [label="settingsModule\nstage 6\nNewSettings(...)"]
         psOverview   [label="overviewModule\nstage 6\nNewOverview(...)"]
 
@@ -198,7 +198,7 @@ digraph azops_cli {
         psRelSvc  [label="ReleaseService"]
         psSvcCSvc [label="ServiceConnectionService\nListServiceConnections\nUpsertServiceConnection\nReadServiceConnectionRoles / SetServiceConnectionRoles\nReadEndpointRoles / SetEndpointRoles"]
         psTestSvc [label="TestService"]
-        psSvcHSvc [label="ServiceHookService"]
+        psSvcHSvc [label="ServiceHookService\nListServiceHooks → key by eventType|url\nUpsertServiceHook (create or update by subscriptionID)"]
         psSetSvc  [label="SettingsService"]
         psOvSvc   [label="OverviewService"]
     }
@@ -310,7 +310,7 @@ digraph azops_cli {
         node [fillcolor="#F8BBD0" color="#C2185B"]
 
         azSecImpl   [label="AzureSecurityService\nNewAzureSecurityService(services, dir)"]
-        azHookImpl  [label="AzureServiceHookService\nNewAzureServiceHookService(services)"]
+        azHookImpl  [label="AzureServiceHookService\nNewAzureServiceHookService(services)\n\nIdempotency key: eventType|url (server discards name)\nListServiceHooks: Name = serviceHookKey(eventType, url)\n\nlatestResourceVersion(ctx, eventType):\n  GET hooks/publishers/tfs/eventTypes/{eventType}\n  → supportedResourceVersions[0]  (cached per run)\n\nListServiceHooks:\n  GET /_apis/hooks/subscriptions\n  filter: publisherId=tfs, consumerId=webHooks,\n    consumerActionId=httpRequest, projectId match\n  → []ServiceHook{ID, Name=key, Event, URL}\n\nUpsertServiceHook (create):\n  latestResourceVersion() → resourceVersion\n  POST /_apis/hooks/subscriptions\n\nUpsertServiceHook (update):\n  latestResourceVersion() → resourceVersion\n  PUT  /_apis/hooks/subscriptions/{id}"]
         azAgentImpl [label="AzureAgentPoolService\nNewAzureAgentPoolService(services)"]
         azTestImpl  [label="AzureTestService\nNewAzureTestService(services)\n\nGET  /{project}/_apis/test/resultretentionsettings\nPATCH /{project}/_apis/test/resultretentionsettings\n\nautomatedResultsRetentionDuration\nmanualResultsRetentionDuration"]
         azDashImpl  [label="AzureDashboardService\nNewAzureDashboardService(services)\n\nNamespace: DashboardsPrivileges (8adf73b7-…)\nToken: $/projectId/teamId  (default team)\nDescriptor: team group ACE (suffix -1-…, non-system)\nBits: Read=1, Create=2, Edit=4, Delete=8, ManagePerm=16\n\nresolveProjectAndDefaultTeam(project):\n  GET _apis/projects → projectId\n  GET _apis/projects/{id}/teams → default teamId\n    (match name '{project} Team' or description 'default')\n\nRead:  GET  _apis/accesscontrollists/{ns}?token=$/pid/tid\n  → pick non-system ACE → allow/deny bits\n  Create/Edit/Delete = bit not in deny AND in allow\n\nWrite: POST _apis/AccessControlEntries/{ns}  merge:true\n  allow = Read(1) + enabled bits\n  deny  = ManagePerm(16) + disabled bits"]
