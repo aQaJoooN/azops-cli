@@ -103,9 +103,23 @@ func (s *AzureLibraryService) ReadLibraryRoles(ctx context.Context, project stri
 		return nil, fmt.Errorf("read library ACL: %w", err)
 	}
 
+	// Build a set of known project group descriptors so we only return entries
+	// for groups that belong to this project, filtering out system/inherited groups.
+	knownGroups, err := s.groups.ListGroups(ctx, project)
+	if err != nil {
+		return nil, fmt.Errorf("list groups for library role read: %w", err)
+	}
+	knownDescriptors := make(map[string]struct{}, len(knownGroups))
+	for _, g := range knownGroups {
+		knownDescriptors[g.Descriptor] = struct{}{}
+	}
+
 	result := make(map[string]config.Role)
 	for _, acl := range aclResp.Value {
 		for descriptor, ace := range acl.AcesDictionary {
+			if _, known := knownDescriptors[descriptor]; !known {
+				continue
+			}
 			result[descriptor] = libraryAllowBitsToRole(ace.Allow)
 		}
 	}
@@ -152,7 +166,7 @@ func (s *AzureLibraryService) SetLibraryRoles(ctx context.Context, project strin
 		Path:           "AccessControlEntries/" + libraryNamespaceID,
 		Method:         http.MethodPost,
 		SkipAPIVersion: true,
-		Body:           aclPayload{Token: token, Merge: true, AccessControlEntries: entries},
+		Body:           aclPayload{Token: token, Merge: false, AccessControlEntries: entries},
 	}, nil); err != nil {
 		return fmt.Errorf("set library permissions: %w", err)
 	}
