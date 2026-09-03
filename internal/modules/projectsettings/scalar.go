@@ -1,14 +1,14 @@
 package projectsettings
 
 import (
+	"context"
 	"errors"
+	"fmt"
+	"reflect"
 
 	"azops-cli/internal/azure"
 	"azops-cli/internal/config"
 	"azops-cli/internal/domain"
-	"context"
-	"fmt"
-	"reflect"
 )
 
 type scalarKind uint8
@@ -112,9 +112,11 @@ func (m *scalarModule) Plan(ctx context.Context, input domain.ModuleInput) (doma
 		return plan, moduleError(m, "read desired state", fmt.Errorf("unsupported scalar module kind"))
 	}
 	if err != nil {
-		// If the service explicitly marks this operation as unsupported, skip gracefully.
+		// For overview, propagate unsupported errors so callers can detect them as typed errors.
+		// For all other scalar modules (release, test, settings), skip gracefully — Azure DevOps
+		// Server may not expose a public API for these, and skipping is the correct fallback.
 		var unsupported *azure.UnsupportedOperationError
-		if errors.As(err, &unsupported) {
+		if errors.As(err, &unsupported) && m.kind != scalarOverview {
 			plan.SkipReason = unsupported.Error()
 			return plan, nil
 		}

@@ -29,7 +29,7 @@ var (
 	Graph            = Service{"graph", CollectionScope, []string{"_apis", "graph"}, "7.0-preview.1"}
 	Security         = Service{"security", CollectionScope, []string{"_apis", "securitynamespaces"}, "7.0"}
 	SecurityACL      = Service{"security acl", CollectionScope, []string{"_apis"}, "7.0"}
-	Build            = Service{"build", ProjectScope, []string{"_apis", "build"}, "7.1"}
+	Build            = Service{"build", ProjectScope, []string{"_apis", "build"}, "7.0"}
 	BuildRetention   = Service{"build retention", ProjectScope, []string{"_apis", "build", "retention"}, "7.0"}
 	Release          = Service{"release", ProjectScope, []string{"_apis", "release"}, "7.0"}
 	AgentPools       = Service{"agentpools", CollectionScope, []string{"_apis", "distributedtask", "pools"}, "7.0"}
