@@ -60,7 +60,18 @@ go build -o azops.exe ./cmd/azops
 
 ```
 azops apply <selector> [options]
+azops --help
+azops -h
 ```
+
+### Getting Help
+
+```bash
+azops --help
+azops -h
+```
+
+Prints the full usage reference and exits with code 0.
 
 ### Options
 
@@ -70,6 +81,7 @@ azops apply <selector> [options]
 | `--config` | `-c` | `./config.yaml` | Path to the config file |
 | `--secret` | `-s` | `./secret.yaml` | Path to the secret file |
 | `--dry-run` | | `false` | Preview planned changes without applying them |
+| `--help` | `-h` | | Print usage and exit |
 
 ### Examples
 
@@ -274,7 +286,7 @@ Supported roles: `Administrator`, `User`, `Reader`.
 
 #### projectsettings.settings
 
-Controls pipeline retention policies and build/trigger toggles.
+Controls pipeline retention policies and build/trigger toggles. The `General` and `Triggers` sub-sections are optional — commenting either one out means those settings are left untouched on the server.
 
 ```yaml
 settings:
@@ -286,6 +298,9 @@ settings:
   General:
     Disable_anonymous_access_to_badges: "on"
     Limit_variables_that_can_be_set_at_queue_time: "on"
+    Limit_job_authorization_scope_to_current_project_for_non-release_pipelines: "off"
+    Limit_job_authorization_scope_to_current_project_for_release_pipelines: "on"
+    Publish_metadata_from_pipelines: "off"
     Protect_access_to_repositories_in_YAML_pipelines: "on"
     Disable_creation_of_classic_build_pipelines: "off"
     Disable_creation_of_classic_release_pipelines: "off"
@@ -295,6 +310,19 @@ settings:
 ```
 
 All `General` and `Triggers` values accept `"on"` / `"off"`. All retention values must be greater than zero.
+
+You can comment out the entire `General` or `Triggers` block and only `Retention_policy` will be applied:
+
+```yaml
+settings:
+  Retention_policy:
+    Days_to_keep_artifacts_symbols_and_attachments: 365
+    Days_to_keep_runs: 365
+    Days_to_keep_pull_request_runs: 365
+    Number_of_recent_runs_to_retain_per_pipeline: 5
+  #General: ...   ← omitted, server values left as-is
+  #Triggers: ...  ← omitted, server values left as-is
+```
 
 #### projectsettings.release
 

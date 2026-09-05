@@ -37,7 +37,7 @@ digraph azops_cli {
         style=filled color="#E8F5E9" fontcolor="#1B5E20" fontsize=13
         node [fillcolor="#C8E6C9" color="#388E3C"]
 
-        cliParse  [label="Parse(args)\n→ Command"]
+        cliParse  [label="Parse(args)\n→ Command\n\n-h / --help → HelpRequest\n  (printed to stdout, exit 0)\napply <selector> [options]"]
         cliConn   [label="ResolveConnection(url, lookup)\n→ Connection{URL, PAT}"]
         Command   [label="Command{Selection, ConfigPath,\nSecretPath, URL, DryRun}"]
         Selection [label="Selection{Kind, Path}"]
@@ -48,6 +48,10 @@ digraph azops_cli {
     cliParse -> Command
     cliParse -> Selection
     Command -> Selection
+
+    // help path
+    cliParse -> domErrors [style=dashed label="-h/--help\nreturns HelpRequest"]
+    run -> domErrors [style=dashed label="errors.As HelpRequest\n→ print to stdout, exit 0"]
 
     // ─── Config ────────────────────────────────────────────────────────────────
     subgraph cluster_config {
@@ -112,7 +116,7 @@ digraph azops_cli {
         domExecGraph [label="ExecutionGraph\n{Stages[]ExecutionStage}"]
         domExecStage [label="ExecutionStage\n{Number, Modules[]Module}"]
         domResult    [label="ModuleResult / FinalResult\nOutcome enum"]
-        domErrors    [label="UsageError / DiscoveryError\nDecodeError / ValidationError\nConnectionError / APIError\nModuleError"]
+        domErrors    [label="HelpRequest (exit 0)\nUsageError / DiscoveryError\nDecodeError / ValidationError\nConnectionError / APIError\nModuleError"]
     }
 
     domModule -> domPlan      [style=dashed label="returns"]
@@ -188,7 +192,7 @@ digraph azops_cli {
         psSvcConn    [label="serviceConnectionsModule\nstage 2\nNewServiceConnections(...)\n\ncreate section (secret.yaml):\n  overwrite: true|false\n  type / auth / url / user / password\n  apiKey / token / grant_access\n\npermissions section:\n  project-level: Creator/User/Reader via PlanRoles()\n  per-endpoint: Creator groups → User via PlanRoles()\n    (Creator inherited = User, idempotent)"]
         psTest       [label="testModule\nstage 2\nNewTest(...)"]
         psSvcHook    [label="serviceHookModule\nstage 5\nNewServiceHook(...)\n\nPlan: match by serviceHookKey(eventType, url)\n  create if no key match\n  skip if sameServiceHook (event+url equal)\nApply: UpsertServiceHook(subscriptionID, secret)"]
-        psSettings   [label="settingsModule\nstage 6\nNewSettings(...)"]
+        psSettings   [label="settingsModule\nstage 6\nNewSettings(...)\n\nPipelineSettingsConfig:\n  RetentionPolicy (always applied)\n  General *GeneralPipelineSettings (optional)\n  Triggers *TriggerSettings (optional)\n\nCommented-out General/Triggers → nil\n  → skipped in validate, apply, idempotency check"]
         psOverview   [label="overviewModule\nstage 6\nNewOverview(...)"]
 
         psSecSvc  [label="SecurityService\n(GroupDirectory + CreateGroup\n+ ReadProjectAccess\n+ SetProjectAccess)"]
