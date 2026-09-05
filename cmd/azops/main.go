@@ -33,6 +33,11 @@ func main() {
 func run(ctx context.Context, args []string, stdout, stderr io.Writer, lookup cli.EnvironmentLookup, workingDir string) int {
 	command, err := cli.Parse(args)
 	if err != nil {
+		var help *domain.HelpRequest
+		if errors.As(err, &help) {
+			_, _ = fmt.Fprint(stdout, help.Text)
+			return exitSuccess
+		}
 		return writeFailure(stderr, report.Redactor{}, err)
 	}
 	connection, err := cli.ResolveConnection(command.URL, lookup)

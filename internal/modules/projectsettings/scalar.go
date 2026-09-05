@@ -95,6 +95,14 @@ func (m *scalarModule) Plan(ctx context.Context, input domain.ModuleInput) (doma
 			rawCopy.RetentionPolicy.RecentRunCount = 0
 			desiredCopy := *cfg.ProjectSettings.Settings
 			desiredCopy.RetentionPolicy.RecentRunCount = 0
+			// If General or Triggers are absent in the desired config, exclude them from
+			// the comparison so we don't perpetually diff against what the server returns.
+			if desiredCopy.General == nil {
+				rawCopy.General = nil
+			}
+			if desiredCopy.Triggers == nil {
+				rawCopy.Triggers = nil
+			}
 			current = rawCopy
 			desired = desiredCopy
 		}

@@ -739,7 +739,10 @@ func (s *AzureSettingsService) ReadPipelineSettings(ctx context.Context, project
 	if err := s.build.Do(ctx, azure.Request{Project: project, Path: "generalsettings"}, &g); err != nil {
 		return config.PipelineSettingsConfig{}, fmt.Errorf("read build generalsettings: %w", err)
 	}
-	cfg := config.PipelineSettingsConfig{}
+	cfg := config.PipelineSettingsConfig{
+		General: &config.GeneralPipelineSettings{},
+		Triggers: &config.TriggerSettings{},
+	}
 	cfg.General.DisableAnonymousBadges = boolToOnOff(g.StatusBadgesArePrivate)
 	cfg.General.LimitQueueTimeVariables = boolToOnOff(g.EnforceSettableVar)
 	cfg.General.LimitNonReleaseAuthorization = boolToOnOff(g.EnforceJobAuthScope)
@@ -775,26 +778,31 @@ func (s *AzureSettingsService) SetPipelineSettings(ctx context.Context, project 
 	if s == nil || s.build == nil {
 		return fmt.Errorf("build adapter is required")
 	}
-	// Apply general toggle settings.
-	generalPayload := map[string]bool{
-		"statusBadgesArePrivate":                onOffToBool(cfg.General.DisableAnonymousBadges),
-		"enforceSettableVar":                    onOffToBool(cfg.General.LimitQueueTimeVariables),
-		"enforceJobAuthScope":                   onOffToBool(cfg.General.LimitNonReleaseAuthorization),
-		"enforceJobAuthScopeForReleases":        onOffToBool(cfg.General.LimitReleaseAuthorization),
-		"publishPipelineMetadata":               onOffToBool(cfg.General.PublishMetadata),
-		"enforceReferencedRepoScopedToken":      onOffToBool(cfg.General.ProtectYAMLRepositories),
-		"disableClassicBuildPipelineCreation":   onOffToBool(cfg.General.DisableClassicBuild),
-		"disableClassicReleasePipelineCreation": onOffToBool(cfg.General.DisableClassicRelease),
-		"enableShellTasksArgsSanitizing":        onOffToBool(cfg.General.EnableShellArgumentValidation),
-		"disableImpliedYAMLCiTrigger":           onOffToBool(cfg.Triggers.DisableImpliedYAMLCI),
-	}
-	if err := s.build.Do(ctx, azure.Request{
-		Project: project,
-		Method:  http.MethodPatch,
-		Path:    "generalsettings",
-		Body:    generalPayload,
-	}, nil); err != nil {
-		return err
+	// Apply general toggle settings only when the section is present in config.
+	if cfg.General != nil || cfg.Triggers != nil {
+		generalPayload := map[string]bool{}
+		if cfg.General != nil {
+			generalPayload["statusBadgesArePrivate"] = onOffToBool(cfg.General.DisableAnonymousBadges)
+			generalPayload["enforceSettableVar"] = onOffToBool(cfg.General.LimitQueueTimeVariables)
+			generalPayload["enforceJobAuthScope"] = onOffToBool(cfg.General.LimitNonReleaseAuthorization)
+			generalPayload["enforceJobAuthScopeForReleases"] = onOffToBool(cfg.General.LimitReleaseAuthorization)
+			generalPayload["publishPipelineMetadata"] = onOffToBool(cfg.General.PublishMetadata)
+			generalPayload["enforceReferencedRepoScopedToken"] = onOffToBool(cfg.General.ProtectYAMLRepositories)
+			generalPayload["disableClassicBuildPipelineCreation"] = onOffToBool(cfg.General.DisableClassicBuild)
+			generalPayload["disableClassicReleasePipelineCreation"] = onOffToBool(cfg.General.DisableClassicRelease)
+			generalPayload["enableShellTasksArgsSanitizing"] = onOffToBool(cfg.General.EnableShellArgumentValidation)
+		}
+		if cfg.Triggers != nil {
+			generalPayload["disableImpliedYAMLCiTrigger"] = onOffToBool(cfg.Triggers.DisableImpliedYAMLCI)
+		}
+		if err := s.build.Do(ctx, azure.Request{
+			Project: project,
+			Method:  http.MethodPatch,
+			Path:    "generalsettings",
+			Body:    generalPayload,
+		}, nil); err != nil {
+			return err
+		}
 	}
 
 	// Apply Days_to_keep_* via build/retention if any are non-zero.

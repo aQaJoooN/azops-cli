@@ -24,9 +24,54 @@ var supportedComponents = map[string]map[string]struct{}{
 	"pipelines":       names("pipelines", "environments", "library", "releases", "taskgroups", "deploymentgroup"),
 }
 
+const helpText = `azops - Azure DevOps configuration management tool
+
+Usage:
+  azops apply <selector> [options]
+
+Selectors:
+  all                       apply all components
+  <root>                    apply all components under a root (e.g. projectsettings)
+  <root>.<component>        apply a single component (e.g. projectsettings.security)
+
+Supported roots and components:
+  projectsettings           overview, security, servicehook, dashboards, repositories,
+                            agentpools, settings, release, serviceconnections, test
+  pipelines                 pipelines, environments, library, releases, taskgroups, deploymentgroup
+
+Options:
+  -c, --config <file>       configuration file (or set AZOPS_CONFIG_FILE) (default: config.yaml)
+  -s, --secret <file>       secret file (or set AZOPS_SECRET_FILE) (default: secret.yaml)
+                            secret file is not required until using these components:
+                             - projectsettings.servicehook.create
+                             - projectsettings.serviceconnections.create
+                             - pipelines.library.create
+  -u, --url <url>           Azure DevOps Server URL (or set AZOPS_AZURE_URL)
+      --dry-run             preview changes without applying them
+  -h, --help                show this help message
+
+Environment variables:
+  AZOPS_AZURE_URL           Azure DevOps Server base URL
+  AZOPS_AZURE_PAT           Azure DevOps personal access token
+  AZOPS_CONFIG_FILE         configuration file path
+  AZOPS_SECRET_FILE         secret file path
+
+Examples:
+  azops apply all
+  azops apply projectsettings
+  azops apply projectsettings.security --dry-run
+  azops apply all -c config.yaml -s secret.yaml -u https://dev.azure.com/org
+`
+
 // Parse validates an azops argument list and returns an apply command.
 func Parse(args []string) (Command, error) {
-	if len(args) == 0 || args[0] != "apply" {
+	if len(args) == 0 {
+		return Command{}, usage("expected command: apply <all|root|root.inner>", nil)
+	}
+	if args[0] == "-h" || args[0] == "--help" {
+		return Command{}, &domain.HelpRequest{Text: helpText}
+	}
+	if args[0] != "apply" {
 		return Command{}, usage("expected command: apply <all|root|root.inner>", nil)
 	}
 

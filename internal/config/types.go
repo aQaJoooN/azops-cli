@@ -81,9 +81,9 @@ type AgentPoolPermissions struct {
 }
 
 type PipelineSettingsConfig struct {
-	RetentionPolicy RetentionPolicySettings `yaml:"Retention_policy"`
-	General         GeneralPipelineSettings `yaml:"General"`
-	Triggers        TriggerSettings         `yaml:"Triggers"`
+	RetentionPolicy RetentionPolicySettings  `yaml:"Retention_policy"`
+	General         *GeneralPipelineSettings `yaml:"General"`
+	Triggers        *TriggerSettings         `yaml:"Triggers"`
 }
 
 type RetentionPolicySettings struct {

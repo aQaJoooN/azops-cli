@@ -5,6 +5,13 @@ import (
 	"strings"
 )
 
+// HelpRequest is returned when the user passes -h or --help.
+type HelpRequest struct {
+	Text string
+}
+
+func (e *HelpRequest) Error() string { return e.Text }
+
 // UsageError reports invalid command-line input.
 type UsageError struct {
 	Message string

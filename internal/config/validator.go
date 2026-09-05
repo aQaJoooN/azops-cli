@@ -204,21 +204,25 @@ func (v *validator) validateConfiguration() {
 		v.positive("projectsettings.settings.Retention_policy.Days_to_keep_runs", c.RetentionPolicy.RunDays)
 		v.positive("projectsettings.settings.Retention_policy.Days_to_keep_pull_request_runs", c.RetentionPolicy.PullRequestDays)
 		v.positive("projectsettings.settings.Retention_policy.Number_of_recent_runs_to_retain_per_pipeline", c.RetentionPolicy.RecentRunCount)
-		settings := map[string]OnOff{
-			"Disable_anonymous_access_to_badges":                                         c.General.DisableAnonymousBadges,
-			"Limit_variables_that_can_be_set_at_queue_time":                              c.General.LimitQueueTimeVariables,
-			"Limit_job_authorization_scope_to_current_project_for_non-release_pipelines": c.General.LimitNonReleaseAuthorization,
-			"Limit_job_authorization_scope_to_current_project_for_release_pipelines":     c.General.LimitReleaseAuthorization,
-			"Publish_metadata_from_pipelines":                                            c.General.PublishMetadata,
-			"Protect_access_to_repositories_in_YAML_pipelines":                           c.General.ProtectYAMLRepositories,
-			"Disable_creation_of_classic_build_pipelines":                                c.General.DisableClassicBuild,
-			"Disable_creation_of_classic_release_pipelines":                              c.General.DisableClassicRelease,
-			"Enable_shell_tasks_arguments_validation":                                    c.General.EnableShellArgumentValidation,
+		if c.General != nil {
+			settings := map[string]OnOff{
+				"Disable_anonymous_access_to_badges":                                         c.General.DisableAnonymousBadges,
+				"Limit_variables_that_can_be_set_at_queue_time":                              c.General.LimitQueueTimeVariables,
+				"Limit_job_authorization_scope_to_current_project_for_non-release_pipelines": c.General.LimitNonReleaseAuthorization,
+				"Limit_job_authorization_scope_to_current_project_for_release_pipelines":     c.General.LimitReleaseAuthorization,
+				"Publish_metadata_from_pipelines":                                            c.General.PublishMetadata,
+				"Protect_access_to_repositories_in_YAML_pipelines":                           c.General.ProtectYAMLRepositories,
+				"Disable_creation_of_classic_build_pipelines":                                c.General.DisableClassicBuild,
+				"Disable_creation_of_classic_release_pipelines":                              c.General.DisableClassicRelease,
+				"Enable_shell_tasks_arguments_validation":                                    c.General.EnableShellArgumentValidation,
+			}
+			for _, name := range sortedMapKeys(settings) {
+				v.validateOnOff("projectsettings.settings.General."+name, settings[name])
+			}
 		}
-		for _, name := range sortedMapKeys(settings) {
-			v.validateOnOff("projectsettings.settings.General."+name, settings[name])
+		if c.Triggers != nil {
+			v.validateOnOff("projectsettings.settings.Triggers.Disable_implied_YAML_CI_trigger", c.Triggers.DisableImpliedYAMLCI)
 		}
-		v.validateOnOff("projectsettings.settings.Triggers.Disable_implied_YAML_CI_trigger", c.Triggers.DisableImpliedYAMLCI)
 	}
 	if c := cfg.ProjectSettings.Security; c != nil {
 		v.validateAccess("projectsettings.security.permissions", c.Permissions)
